@@ -1,8 +1,8 @@
 import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
 import connectDB from "./config/db.js";
-import { verifyToken } from "./auth.js";
 
+import { verifyToken } from "./auth.js";
 import {
   productTypeDefs,
   productResolvers,

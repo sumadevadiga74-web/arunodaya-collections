@@ -325,7 +325,7 @@ const resolvers = {
 
 await connectDB();
 
-const server = new ApolloServer({
+export const server = new ApolloServer({
   typeDefs: [
     baseTypeDefs,
 
@@ -408,30 +408,32 @@ mediaMutationTypeDefs,
   resolvers,
 });
 
-const { url } = await startStandaloneServer(server, {
-  listen: { port: 4000 },
+if (!process.env.VERCEL) {
+  const { url } = await startStandaloneServer(server, {
+    listen: { port: 4000 },
 
-  context: async ({ req }) => {
-    const authHeader = req.headers.authorization || "";
+    context: async ({ req }) => {
+      const authHeader = req.headers.authorization || "";
 
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.substring(7)
-      : "";
+      const token = authHeader.startsWith("Bearer ")
+        ? authHeader.substring(7)
+        : "";
 
-    let user = null;
+      let user = null;
 
-    if (token) {
-      try {
-        user = verifyToken(token);
-      } catch (error) {
-        user = null;
+      if (token) {
+        try {
+          user = verifyToken(token);
+        } catch (error) {
+          user = null;
+        }
       }
-    }
 
-    return {
-      user,
-    };
-  },
-});
+      return {
+        user,
+      };
+    },
+  });
 
-console.log(`GraphQL API running at ${url}`);
+  console.log(`GraphQL API running at ${url}`);
+}

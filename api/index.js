@@ -1,8 +1,8 @@
 import express from "express";
 import cors from "cors";
 import { expressMiddleware } from "@as-integrations/express5";
-import { server } from "../server.js";
-import { verifyToken } from "../auth.js";
+import { server } from "./server.js";
+import { verifyToken } from "./auth.js";
 
 const app = express();
 

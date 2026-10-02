@@ -258,7 +258,7 @@ export default function ShopPage() {
     loading: productsLoading,
     error: productsError,
     refetch: refetchProducts,
-  } = useQuery(PRODUCTS_QUERY, {
+  } = useQuery<any>(PRODUCTS_QUERY, {
     variables: {
       page: 1,
       limit: 1000,
@@ -273,16 +273,16 @@ export default function ShopPage() {
   const {
     data: brandsData,
     loading: brandsLoading,
-  } = useQuery(BRANDS_QUERY);
+  } = useQuery<any>(BRANDS_QUERY);
 
   const {
     data: coloursData,
     loading: coloursLoading,
-  } = useQuery(COLOURS_QUERY);
+  } = useQuery<any>(COLOURS_QUERY);
 
   const {
     data: reviewsData,
-  } = useQuery(REVIEWS_QUERY);
+  } = useQuery<any>(REVIEWS_QUERY);
 
   /* =======================================================
      AUTH STATE FOR WISHLIST
@@ -335,7 +335,7 @@ export default function ShopPage() {
     data: wishlistData,
     loading: wishlistLoading,
     refetch: refetchWishlist,
-  } = useQuery(WISHLISTS_QUERY, {
+  } = useQuery<any>(WISHLISTS_QUERY, {
     skip:
       !authChecked ||
       !authUserId,
@@ -347,13 +347,13 @@ export default function ShopPage() {
   ======================================================= */
 
   const [createWishlist] =
-    useMutation(CREATE_WISHLIST);
+    useMutation<any>(CREATE_WISHLIST);
 
   const [deleteWishlist] =
-    useMutation(DELETE_WISHLIST);
+    useMutation<any>(DELETE_WISHLIST);
 
   const [createBasket] =
-    useMutation(CREATE_BASKET);
+    useMutation<any>(CREATE_BASKET);
 
   /* =======================================================
      FILTER STATES
@@ -1812,15 +1812,13 @@ if (normalizedSearch) {
 
                               <button
                                 type="button"
-                                disabled={
-                                  isAdding ||
-                                  isInBasket ||
-                                  product.stock ===
-                                    0 ||
-                                  (product.status &&
-                                    product.status.toLowerCase() !==
-                                      "active")
-                                }
+                               disabled={Boolean(
+  isAdding ||
+  isInBasket ||
+  product.stock === 0 ||
+  (product.status &&
+    product.status.toLowerCase() !== "active")
+)}
                                 onClick={(
                                   event
                                 ) =>

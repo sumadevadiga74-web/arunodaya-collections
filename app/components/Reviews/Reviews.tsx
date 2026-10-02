@@ -65,7 +65,7 @@ export default function Reviews() {
   );
 
   const [deleteReview] =
-    useMutation(DELETE_REVIEW);
+    useMutation<any>(DELETE_REVIEW);
 
   const [selectedReviewId, setSelectedReviewId] =
     useState<string | null>(null);

@@ -375,7 +375,7 @@ export default function ProductDetailsPage() {
     data: productData,
     loading: productLoading,
     error: productError,
-  } = useQuery(PRODUCT_QUERY, {
+  } = useQuery<any>(PRODUCT_QUERY, {
     variables: {
       id: productId,
     },
@@ -390,7 +390,7 @@ export default function ProductDetailsPage() {
   const {
     data: reviewsData,
     loading: reviewsLoading,
-  } = useQuery(PRODUCT_REVIEWS_QUERY, {
+  } = useQuery<any>(PRODUCT_REVIEWS_QUERY, {
     variables: {
       productId,
     },
@@ -402,9 +402,9 @@ export default function ProductDetailsPage() {
      MUTATIONS
   ======================================================= */
 
-  const [createBasket] = useMutation(CREATE_BASKET);
+  const [createBasket] = useMutation<any>(CREATE_BASKET);
 
-  const [addWishlist] = useMutation(ADD_WISHLIST);
+  const [addWishlist] = useMutation<any>(ADD_WISHLIST);
 
   /* =======================================================
      PRODUCT DATA
@@ -1208,7 +1208,7 @@ export default function ProductDetailsPage() {
                     fontWeight: 800,
                   }}
                 >
-                  ★{" "}
+                  â˜…{" "}
                   {productRating.averageRating.toFixed(
                     1
                   )}
@@ -1237,7 +1237,7 @@ export default function ProductDetailsPage() {
                   marginBottom: "20px",
                 }}
               >
-                ₹
+                â‚¹
                 {Number(
                   product.price
                 ).toLocaleString("en-IN")}
@@ -1371,7 +1371,7 @@ export default function ProductDetailsPage() {
                               : "#fff",
                           }}
                         >
-                          ✓
+                          âœ“
                         </span>
                       </span>
 
@@ -1526,7 +1526,7 @@ export default function ProductDetailsPage() {
                                           900,
                                       }}
                                     >
-                                      ✓
+                                      âœ“
                                     </span>
                                   )}
                                 </span>
@@ -1712,7 +1712,7 @@ export default function ProductDetailsPage() {
                       margin: 0,
                     }}
                   >
-                    ✓ In Stock{" "}
+                    âœ“ In Stock{" "}
                     <span
                       style={{
                         color: "#777",
@@ -1782,7 +1782,7 @@ export default function ProductDetailsPage() {
                         fontSize: "18px",
                       }}
                     >
-                      −
+                      âˆ’
                     </button>
 
                     <span
@@ -1892,7 +1892,7 @@ export default function ProductDetailsPage() {
                 >
                   {addingToWishlist
                     ? "Adding..."
-                    : "♡ Wishlist"}
+                    : "â™¡ Wishlist"}
                 </button>
               </div>
             </div>
@@ -1977,7 +1977,7 @@ export default function ProductDetailsPage() {
                     margin: "8px 0",
                   }}
                 >
-                  ★★★★★
+                  â˜…â˜…â˜…â˜…â˜…
                 </div>
 
                 <div
@@ -2030,7 +2030,7 @@ export default function ProductDetailsPage() {
                             fontWeight: 700,
                           }}
                         >
-                          {star} ★
+                          {star} â˜…
                         </span>
 
                         <div
@@ -2105,7 +2105,7 @@ export default function ProductDetailsPage() {
                     marginBottom: "10px",
                   }}
                 >
-                  ☆
+                  â˜†
                 </div>
 
                 <h3
@@ -2211,7 +2211,7 @@ export default function ProductDetailsPage() {
                                         : "#ddd",
                                   }}
                                 >
-                                  ★
+                                  â˜…
                                 </span>
                               )
                             )}
@@ -2311,7 +2311,7 @@ export default function ProductDetailsPage() {
                   cursor: "pointer",
                 }}
               >
-                ×
+                Ã—
               </button>
 
               <h2

@@ -307,7 +307,7 @@ export default function MyOrdersPage() {
     loading: ordersLoading,
     error: ordersError,
     refetch: refetchOrders,
-  } = useQuery(ORDERS_QUERY, {
+  } = useQuery<any>(ORDERS_QUERY, {
     skip: !currentUserId,
     fetchPolicy: "network-only",
   });
@@ -318,7 +318,7 @@ export default function MyOrdersPage() {
 
   const {
     data: productsData,
-  } = useQuery(PRODUCTS_QUERY, {
+  } = useQuery<any>(PRODUCTS_QUERY, {
     fetchPolicy: "cache-first",
   });
 
@@ -327,10 +327,10 @@ export default function MyOrdersPage() {
   ========================================================= */
 
   const [cancelOrder, { loading: cancelling }] =
-    useMutation(CANCEL_ORDER_MUTATION);
+    useMutation<any>(CANCEL_ORDER_MUTATION);
 
   const [createReview, { loading: creatingReview }] =
-    useMutation(CREATE_REVIEW_MUTATION);
+    useMutation<any>(CREATE_REVIEW_MUTATION);
 
   /* =========================================================
      DATA

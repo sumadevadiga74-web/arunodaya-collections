@@ -108,9 +108,9 @@ export default function Settings() {
   const { data, loading, error, refetch } =
     useQuery<SettingsData>(SETTINGS_QUERY);
 
-  const [createSettings] = useMutation(CREATE_SETTINGS);
-  const [updateSettings] = useMutation(UPDATE_SETTINGS);
-  const [deleteSettings] = useMutation(DELETE_SETTINGS);
+  const [createSettings] = useMutation<any>(CREATE_SETTINGS);
+  const [updateSettings] = useMutation<any>(UPDATE_SETTINGS);
+  const [deleteSettings] = useMutation<any>(DELETE_SETTINGS);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 

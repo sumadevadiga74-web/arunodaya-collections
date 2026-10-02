@@ -77,9 +77,9 @@ export default function HomeComponent({
     initialHome
   );
 
-  const [createHome] = useMutation(CREATE_HOME);
-  const [updateHome] = useMutation(UPDATE_HOME);
-  const [deleteHome] = useMutation(DELETE_HOME);
+  const [createHome] = useMutation<any>(CREATE_HOME);
+  const [updateHome] = useMutation<any>(UPDATE_HOME);
+  const [deleteHome] = useMutation<any>(DELETE_HOME);
 
   const [editingId, setEditingId] = useState<string | null>(
     null

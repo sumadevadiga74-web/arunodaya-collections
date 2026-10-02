@@ -260,16 +260,16 @@ export default function Orders() {
      MUTATIONS
   ======================================================= */
 
-  const [createOrder] = useMutation(CREATE_ORDER);
+  const [createOrder] = useMutation<any>(CREATE_ORDER);
 
   const [updateOrder] =
-    useMutation(UPDATE_ORDER);
+    useMutation<any>(UPDATE_ORDER);
 
   const [updateOrderTracking] =
-    useMutation(UPDATE_ORDER_TRACKING);
+    useMutation<any>(UPDATE_ORDER_TRACKING);
 
   const [deleteOrder] =
-    useMutation(DELETE_ORDER);
+    useMutation<any>(DELETE_ORDER);
 
   /* =======================================================
      FORM STATE

@@ -164,6 +164,11 @@ import {
 } from "./graphql/mutations/sizechart.mutation.js";
 
 import {
+  mediaMutationTypeDefs,
+  mediaMutationResolvers,
+} from "./graphql/mutations/media.mutation.js";
+
+import {
   salesChartTypeDefs,
   salesChartResolvers,
 } from "./graphql/queries/salesChart.query.js";
@@ -230,6 +235,11 @@ import {
 
 import { getUserFromToken } from "./auth.js";
 
+import {
+  mediaTypeDefs,
+  mediaResolvers,
+} from "./graphql/queries/media.query.js";
+
 const baseTypeDefs = `#graphql
   type Query {
     hello: String
@@ -270,6 +280,7 @@ const resolvers = {
     ...customerSalesSummaryResolvers.Query,
     ...settingsResolvers.Query,
     ...pageResolvers.Query,
+...mediaResolvers.Query,
   },
 
   Mutation: {
@@ -292,6 +303,7 @@ const resolvers = {
     ...settingsMutationResolvers.Mutation,
     ...pageMutationResolvers.Mutation,
     ...authResolvers.Mutation,
+...mediaMutationResolvers.Mutation,
   },
 
   Product: productResolvers.Product,
@@ -386,6 +398,9 @@ const server = new ApolloServer({
 
     pageTypeDefs,
     pageMutationTypeDefs,
+
+mediaTypeDefs,
+mediaMutationTypeDefs,
 
     authTypeDefs,
   ],

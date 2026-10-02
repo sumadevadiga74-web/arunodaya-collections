@@ -95,9 +95,9 @@ export default function Contacts() {
     contacts: Contact[];
   }>(CONTACTS_QUERY);
 
-  const [createContact] = useMutation(CREATE_CONTACT);
-  const [updateContact] = useMutation(UPDATE_CONTACT);
-  const [deleteContact] = useMutation(DELETE_CONTACT);
+  const [createContact] = useMutation<any>(CREATE_CONTACT);
+  const [updateContact] = useMutation<any>(UPDATE_CONTACT);
+  const [deleteContact] = useMutation<any>(DELETE_CONTACT);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 

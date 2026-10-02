@@ -83,9 +83,9 @@ export default function Categories() {
     categories: Category[];
   }>(CATEGORIES_QUERY);
 
-  const [createCategory] = useMutation(CREATE_CATEGORY);
-  const [updateCategory] = useMutation(UPDATE_CATEGORY);
-  const [deleteCategory] = useMutation(DELETE_CATEGORY);
+  const [createCategory] = useMutation<any>(CREATE_CATEGORY);
+  const [updateCategory] = useMutation<any>(UPDATE_CATEGORY);
+  const [deleteCategory] = useMutation<any>(DELETE_CATEGORY);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");

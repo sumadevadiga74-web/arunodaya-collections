@@ -15,7 +15,7 @@ const HOME_QUERY = gql`
 `;
 
 export default async function HomePage() {
-  const { data } = await apolloServerClient.query({
+  const { data } = await apolloServerClient.query<any>({
     query: HOME_QUERY,
     fetchPolicy: "no-cache",
   });

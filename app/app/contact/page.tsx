@@ -31,7 +31,7 @@ const CREATE_CONTACT = gql`
 
 export default function ContactPage() {
   const [createContact, { loading }] =
-    useMutation(CREATE_CONTACT);
+    useMutation<any>(CREATE_CONTACT);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

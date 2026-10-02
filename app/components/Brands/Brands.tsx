@@ -83,9 +83,9 @@ export default function Brands() {
     brands: Brand[];
   }>(BRANDS_QUERY);
 
-  const [createBrand] = useMutation(CREATE_BRAND);
-  const [updateBrand] = useMutation(UPDATE_BRAND);
-  const [deleteBrand] = useMutation(DELETE_BRAND);
+  const [createBrand] = useMutation<any>(CREATE_BRAND);
+  const [updateBrand] = useMutation<any>(UPDATE_BRAND);
+  const [deleteBrand] = useMutation<any>(DELETE_BRAND);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");

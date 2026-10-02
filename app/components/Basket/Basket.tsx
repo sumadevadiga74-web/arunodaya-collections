@@ -95,8 +95,8 @@ export default function Basket() {
 
   const baskets = basketData?.baskets ?? [];
 
-  console.log("🛒 BASKETS DATA:", baskets);
-  console.log("🛒 BASKETS ERROR:", basketError);
+  console.log("?? BASKETS DATA:", baskets);
+  console.log("?? BASKETS ERROR:", basketError);
 
   // --------------------------------------------------
   // ACTIVE BASKETS
@@ -110,7 +110,7 @@ export default function Basket() {
     .map((basket) => basket.productId)
     .filter(Boolean);
 
-  console.log("📦 PRODUCT IDS:", productIds);
+  console.log("?? PRODUCT IDS:", productIds);
 
   // --------------------------------------------------
   // LOAD PRODUCTS
@@ -134,18 +134,18 @@ export default function Basket() {
 
   const products = productData?.productsByIds ?? [];
 
-  console.log("📦 PRODUCTS DATA:", products);
-  console.log("📦 PRODUCTS ERROR:", productError);
+  console.log("?? PRODUCTS DATA:", products);
+  console.log("?? PRODUCTS ERROR:", productError);
 
   // --------------------------------------------------
   // MUTATIONS
   // --------------------------------------------------
 
   const [updateBasket, { loading: updating }] =
-    useMutation(UPDATE_BASKET);
+    useMutation<any>(UPDATE_BASKET);
 
   const [deleteBasket, { loading: deleting }] =
-    useMutation(DELETE_BASKET);
+    useMutation<any>(DELETE_BASKET);
 
   // --------------------------------------------------
   // FIND PRODUCT
@@ -465,7 +465,7 @@ export default function Basket() {
           <div className="rounded-3xl bg-white px-6 py-16 text-center shadow-sm">
 
             <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-[#fff7d6] text-4xl">
-              🛍️
+              ???
             </div>
 
             <h2 className="text-2xl font-bold text-[#102f56]">
@@ -557,7 +557,7 @@ export default function Basket() {
 
                         {/* PRICE */}
                         <p className="mt-2 text-sm text-gray-600">
-                          ₹
+                          ?
                           {Number(
                             product.price
                           ).toFixed(0)}{" "}
@@ -603,7 +603,7 @@ export default function Basket() {
                               }
                               className="px-3 py-2 text-lg font-bold text-[#102f56] transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              −
+                              -
                             </button>
 
                             <span className="min-w-10 text-center font-semibold text-[#102f56]">
@@ -647,7 +647,7 @@ export default function Basket() {
                         <div className="mt-4 flex items-center justify-between gap-4">
 
                           <p className="text-lg font-bold text-[#102f56]">
-                            ₹{itemTotal.toFixed(0)}
+                            ?{itemTotal.toFixed(0)}
                           </p>
 
                           <button
@@ -716,7 +716,7 @@ export default function Basket() {
                   </span>
 
                   <span className="font-semibold text-[#102f56]">
-                    ₹{grandTotal.toFixed(0)}
+                    ?{grandTotal.toFixed(0)}
                   </span>
                 </div>
 
@@ -741,7 +741,7 @@ export default function Basket() {
                 </span>
 
                 <span className="text-2xl font-bold text-[#102f56]">
-                  ₹{grandTotal.toFixed(0)}
+                  ?{grandTotal.toFixed(0)}
                 </span>
 
               </div>
@@ -752,14 +752,14 @@ export default function Basket() {
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#f2c12e] px-5 py-3.5 font-bold text-[#102f56] transition hover:bg-[#dcae12]"
               >
                 Proceed to Checkout
-                <span>→</span>
+                <span>?</span>
               </button>
 
               <Link
                 href="/shop"
                 className="mt-4 flex items-center justify-center gap-2 text-sm font-semibold text-[#102f56] transition hover:text-[#d4a915]"
               >
-                <span>←</span>
+                <span>?</span>
                 Continue Shopping
               </Link>
 
@@ -772,7 +772,7 @@ export default function Basket() {
 
           <div className="rounded-2xl bg-white p-5 shadow-sm">
             <p className="font-bold text-[#102f56]">
-              ✓ Easy shopping
+              ? Easy shopping
             </p>
 
             <p className="mt-1 text-sm text-gray-600">
@@ -782,7 +782,7 @@ export default function Basket() {
 
           <div className="rounded-2xl bg-white p-5 shadow-sm">
             <p className="font-bold text-[#102f56]">
-              ✓ Quality collection
+              ? Quality collection
             </p>
 
             <p className="mt-1 text-sm text-gray-600">
@@ -855,7 +855,7 @@ export default function Basket() {
                 }`}
               >
                 {feedback.type === "success"
-                  ? "✓"
+                  ? "?"
                   : feedback.type === "error"
                   ? "!"
                   : "i"}
@@ -885,3 +885,4 @@ export default function Basket() {
     </main>
   );
 }
+

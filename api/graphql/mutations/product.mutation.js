@@ -3,51 +3,173 @@ import { requireAdmin } from "../../permissions.js";
 
 export const productMutationTypeDefs = `#graphql
 
-  input ColourImageInput {
-    colour: String!
-    image: String!
+  # --------------------------------------------------
+  # Product Media
+  # --------------------------------------------------
+
+  input ProductMediaInput {
+    type: String!
+    url: String!
+    publicId: String
   }
 
-  input ProductImageInput {
-    view: String!
-    image: String!
+  # --------------------------------------------------
+  # Product Offer
+  # --------------------------------------------------
+
+  input ProductOfferInput {
+    minQty: Int
+    maxQty: Int
+    discountType: String
+    pricePerUnit: Float
+    percentOff: Float
+    freeProductConfig: String
   }
+
+  # --------------------------------------------------
+  # Product Weight
+  # --------------------------------------------------
+
+  input ProductWeightInput {
+    type: String
+    value: Float
+  }
+
+  # --------------------------------------------------
+  # Product Item / Variant
+  # --------------------------------------------------
+
+  input ProductItemInput {
+    price: Float
+    onDiscount: Boolean
+    mrp: Float
+    discountPerc: Float
+    discountAmount: Float
+    sellingPrice: Float
+    currency: String
+
+    offers: ProductOfferInput
+
+    categories: [String!]
+    brands: [String!]
+
+    freeQty: Int
+    barcode: String
+    sku: String
+
+    weight: ProductWeightInput
+
+    stock: Int
+    size: String
+    colour: String
+
+    images: [ProductMediaInput!]
+  }
+
+  # --------------------------------------------------
+  # Extra Info
+  # --------------------------------------------------
+
+  input ProductExtraInfoInput {
+    title: String
+    description: String
+    image: String
+  }
+
+  # --------------------------------------------------
+  # SEO
+  # --------------------------------------------------
+
+  input ProductSEOInput {
+    title: String
+    description: String
+    image: String
+  }
+
+  # --------------------------------------------------
+  # Product Image Info
+  # --------------------------------------------------
+
+  input ProductImageInfoInput {
+    lineOne: String
+    lineTwo: String
+  }
+
+  # --------------------------------------------------
+  # Mutations
+  # --------------------------------------------------
 
   extend type Mutation {
+
     createProduct(
       name: String!
-      price: Float!
-      image: String
-      category: String
-      brand: ID
-      description: String
-      stock: Int
-      sizes: [String!]
-      colours: [String!]
-      colourImages: [ColourImageInput!]
-      productImages: [ProductImageInput!]
-      sizechart: ID
       status: String
+      subTitle: String
+      slug: String
+      description: String
+      skuPrefix: String
+
+      storeId: ID
+      brand: ID
+
+      extraInfo: ProductExtraInfoInput
+
+      categories: [String!]
+
+      seo: ProductSEOInput
+
+      mainMedia: [ProductMediaInput!]
+      images: [ProductMediaInput!]
+
+      similarItems: [ID!]
+
+      productImageInfo: ProductImageInfoInput
+
+      sizeChart: ID
+
+      rating: Float
+      reviewsCount: Int
+
+      items: [ProductItemInput!]
     ): Product!
 
     updateProduct(
       id: ID!
+
       name: String
-      price: Float
-      image: String
-      category: String
-      brand: ID
-      description: String
-      stock: Int
-      sizes: [String!]
-      colours: [String!]
-      colourImages: [ColourImageInput!]
-      productImages: [ProductImageInput!]
-      sizechart: ID
       status: String
+      subTitle: String
+      slug: String
+      description: String
+      skuPrefix: String
+
+      storeId: ID
+      brand: ID
+
+      extraInfo: ProductExtraInfoInput
+
+      categories: [String!]
+
+      seo: ProductSEOInput
+
+      mainMedia: [ProductMediaInput!]
+      images: [ProductMediaInput!]
+
+      similarItems: [ID!]
+
+      productImageInfo: ProductImageInfoInput
+
+      sizeChart: ID
+
+      rating: Float
+      reviewsCount: Int
+
+      items: [ProductItemInput!]
     ): Product
 
-    deleteProduct(id: ID!): Product
+    deleteProduct(
+      id: ID!
+    ): Product
   }
 `;
 
@@ -58,10 +180,22 @@ export const productMutationResolvers = {
 
       const product = await Product.create({
         ...args,
-        sizes: args.sizes || [],
-        colours: args.colours || [],
-        colourImages: args.colourImages || [],
-        productImages: args.productImages || [],
+
+        status: args.status || "draft",
+
+        categories: args.categories || [],
+
+        mainMedia: args.mainMedia || [],
+
+        images: args.images || [],
+
+        similarItems: args.similarItems || [],
+
+        items: args.items || [],
+
+        rating: args.rating || 0,
+
+        reviewsCount: args.reviewsCount || 0,
       });
 
       return product;
@@ -73,7 +207,10 @@ export const productMutationResolvers = {
       return await Product.findByIdAndUpdate(
         id,
         updates,
-        { new: true }
+        {
+          new: true,
+          runValidators: true,
+        }
       );
     },
 

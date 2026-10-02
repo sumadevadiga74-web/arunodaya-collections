@@ -56,7 +56,7 @@ export default function CustomerLoginPage() {
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const redirectHandledRef = useRef(false);
 
-  const [firebaseLogin] = useMutation(FIREBASE_LOGIN);
+  const [firebaseLogin] = useMutation<any>(FIREBASE_LOGIN);
 
   // --------------------------------------------------
   // ERROR MESSAGE

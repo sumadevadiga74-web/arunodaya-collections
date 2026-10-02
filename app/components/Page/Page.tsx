@@ -93,9 +93,9 @@ export default function Page() {
     pages: PageItem[];
   }>(PAGES_QUERY);
 
-  const [createPage] = useMutation(CREATE_PAGE);
-  const [updatePage] = useMutation(UPDATE_PAGE);
-  const [deletePage] = useMutation(DELETE_PAGE);
+  const [createPage] = useMutation<any>(CREATE_PAGE);
+  const [updatePage] = useMutation<any>(UPDATE_PAGE);
+  const [deletePage] = useMutation<any>(DELETE_PAGE);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 

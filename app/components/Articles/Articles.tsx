@@ -89,9 +89,9 @@ export default function Articles() {
     articles: Article[];
   }>(ARTICLES_QUERY);
 
-  const [createArticle] = useMutation(CREATE_ARTICLE);
-  const [updateArticle] = useMutation(UPDATE_ARTICLE);
-  const [deleteArticle] = useMutation(DELETE_ARTICLE);
+  const [createArticle] = useMutation<any>(CREATE_ARTICLE);
+  const [updateArticle] = useMutation<any>(UPDATE_ARTICLE);
+  const [deleteArticle] = useMutation<any>(DELETE_ARTICLE);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 

@@ -91,7 +91,7 @@ const faqs = [
 
 export default function HelpSupportPage() {
   const [createContact, { loading }] =
-    useMutation(CREATE_CONTACT);
+    useMutation<any>(CREATE_CONTACT);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

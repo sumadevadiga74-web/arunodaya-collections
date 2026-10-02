@@ -82,12 +82,12 @@ export default function WishlistPage() {
     loading,
     error,
     refetch,
-  } = useQuery(WISHLIST_QUERY, {
+  } = useQuery<any>(WISHLIST_QUERY, {
     skip: !authChecked || !authUser,
     fetchPolicy: "network-only",
   });
 
-  const [deleteWishlist] = useMutation(
+  const [deleteWishlist] = useMutation<any>(
     DELETE_WISHLIST_MUTATION
   );
 

@@ -75,9 +75,9 @@ export default function Sizechart() {
     getSizecharts: Sizechart[];
   }>(SIZECHARTS_QUERY);
 
-  const [createSizechart] = useMutation(CREATE_SIZECHART);
-  const [updateSizechart] = useMutation(UPDATE_SIZECHART);
-  const [deleteSizechart] = useMutation(DELETE_SIZECHART);
+  const [createSizechart] = useMutation<any>(CREATE_SIZECHART);
+  const [updateSizechart] = useMutation<any>(UPDATE_SIZECHART);
+  const [deleteSizechart] = useMutation<any>(DELETE_SIZECHART);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 

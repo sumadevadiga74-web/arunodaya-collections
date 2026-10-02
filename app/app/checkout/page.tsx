@@ -332,13 +332,13 @@ export default function CheckoutPage() {
 
   const [createOrder] =
 
-    useMutation(CREATE_ORDER);
+    useMutation<any>(CREATE_ORDER);
 
 
 
   const [deleteBasket] =
 
-    useMutation(DELETE_BASKET);
+    useMutation<any>(DELETE_BASKET);
 
 
 

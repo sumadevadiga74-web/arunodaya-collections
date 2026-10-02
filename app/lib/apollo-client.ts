@@ -8,10 +8,10 @@ import {
 import { SetContextLink } from "@apollo/client/link/context";
 
 const httpLink = new HttpLink({
-  uri: "http://localhost:4000/",
+  uri: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/",
 });
 
-const authLink = new SetContextLink((_, { headers }) => {
+const authLink = new SetContextLink((prevContext) => {
   const token =
     typeof window !== "undefined"
       ? localStorage.getItem("authToken")
@@ -21,7 +21,7 @@ const authLink = new SetContextLink((_, { headers }) => {
 
   return {
     headers: {
-      ...headers,
+      ...prevContext.headers,
       authorization: token
         ? `Bearer ${token}`
         : "",

@@ -92,9 +92,9 @@ export default function Participants() {
     participants: Participant[];
   }>(PARTICIPANTS_QUERY);
 
-  const [createParticipant] = useMutation(CREATE_PARTICIPANT);
-  const [updateParticipant] = useMutation(UPDATE_PARTICIPANT);
-  const [deleteParticipant] = useMutation(DELETE_PARTICIPANT);
+  const [createParticipant] = useMutation<any>(CREATE_PARTICIPANT);
+  const [updateParticipant] = useMutation<any>(UPDATE_PARTICIPANT);
+  const [deleteParticipant] = useMutation<any>(DELETE_PARTICIPANT);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 

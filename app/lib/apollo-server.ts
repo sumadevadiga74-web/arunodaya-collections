@@ -8,7 +8,7 @@ const apolloServerClient = new ApolloClient({
   ssrMode: true,
 
   link: new HttpLink({
-    uri: "http://localhost:4000/",
+  uri: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/",
     fetch,
   }),
 

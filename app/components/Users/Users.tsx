@@ -97,9 +97,9 @@ export default function Users() {
     users: User[];
   }>(USERS_QUERY);
 
-  const [createUser] = useMutation(CREATE_USER);
-  const [updateUser] = useMutation(UPDATE_USER);
-  const [deleteUser] = useMutation(DELETE_USER);
+  const [createUser] = useMutation<any>(CREATE_USER);
+  const [updateUser] = useMutation<any>(UPDATE_USER);
+  const [deleteUser] = useMutation<any>(DELETE_USER);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);

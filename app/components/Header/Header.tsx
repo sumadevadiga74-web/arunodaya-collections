@@ -26,7 +26,7 @@ useEffect(() => {
   const authUser = localStorage.getItem("authUser");
   setIsLoggedIn(!!authUser);
 }, []);
-  const { data } = useQuery(BASKETS_QUERY, {
+  const { data } = useQuery<any>(BASKETS_QUERY, {
     fetchPolicy: "network-only",
   });
 

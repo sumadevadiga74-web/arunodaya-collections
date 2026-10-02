@@ -67,9 +67,9 @@ export default function Sizes() {
     sizes: Size[];
   }>(SIZES_QUERY);
 
-  const [createSize] = useMutation(CREATE_SIZE);
-  const [updateSize] = useMutation(UPDATE_SIZE);
-  const [deleteSize] = useMutation(DELETE_SIZE);
+  const [createSize] = useMutation<any>(CREATE_SIZE);
+  const [updateSize] = useMutation<any>(UPDATE_SIZE);
+  const [deleteSize] = useMutation<any>(DELETE_SIZE);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");

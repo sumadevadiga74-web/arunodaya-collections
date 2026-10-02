@@ -1,45 +1,163 @@
-
 "use client";
 
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { useState } from "react";
+import MediaLibrary from "../MediaLibrary/MediaLibrary";
+
+/* =========================================================
+   TYPES
+========================================================= */
+
+type ProductMedia = {
+  type: string;
+  url: string;
+  publicId?: string | null;
+};
+
+type MediaLibraryItem = {
+  id: string;
+  mediaType: string;
+  url: string;
+  publicId?: string;
+  fullPublicId?: string;
+  altText?: string;
+  folder?: string;
+  createdAt?: string;
+};
+
+type ProductItem = {
+  id?: string;
+  price?: number | null;
+  onDiscount?: boolean | null;
+  mrp?: number | null;
+  discountPerc?: number | null;
+  discountAmount?: number | null;
+  sellingPrice?: number | null;
+  currency?: string | null;
+  barcode?: string | null;
+  sku?: string | null;
+  stock?: number | null;
+  size?: string | null;
+  colour?: string | null;
+  images?: ProductMedia[] | null;
+};
+
+type Product = {
+  id: string;
+  name: string;
+  status?: string | null;
+  subTitle?: string | null;
+  slug?: string | null;
+  description?: string | null;
+  skuPrefix?: string | null;
+
+  storeId?: string | null;
+
+  brand?: {
+    id: string;
+    name: string;
+  } | null;
+
+  categories?: string[] | null;
+
+  mainMedia?: ProductMedia[] | null;
+  images?: ProductMedia[] | null;
+
+  sizeChart?: {
+    id: string;
+    name: string;
+    slug?: string | null;
+    image?: string | null;
+    status?: string | null;
+  } | null;
+
+  rating?: number | null;
+  reviewsCount?: number | null;
+
+  items?: ProductItem[] | null;
+};
+
+type ProductPage = {
+  products: Product[];
+  page: number;
+  limit: number;
+  hasMore: boolean;
+};
+
+type ProductsResponse = {
+  products: ProductPage;
+};
+
+type Brand = {
+  id: string;
+  name: string;
+  status?: string | null;
+};
+
+type BrandsResponse = {
+  brands: Brand[];
+};
+
+type SizeChart = {
+  id: string;
+  name: string;
+  slug?: string | null;
+  image?: string | null;
+  status?: string | null;
+};
+
+type SizeChartsResponse = {
+  sizecharts: SizeChart[];
+};
+
+type VariantForm = {
+  colour: string;
+  size: string;
+  price: string;
+  stock: string;
+  sku: string;
+  barcode: string;
+  images: ProductMedia[];
+};
 
 /* =========================================================
    PRODUCTS QUERY
 ========================================================= */
 
 const PRODUCTS_QUERY = gql`
-  query Products($page: Int!, $limit: Int!) {
+  query Products($page: Int, $limit: Int) {
     products(page: $page, limit: $limit) {
       products {
         id
         name
-        price
-        image
-        category
+        status
+        subTitle
+        slug
+        description
+        skuPrefix
+        storeId
 
         brand {
           id
           name
         }
 
-        description
-        stock
-        sizes
-        colours
+        categories
 
-        colourImages {
-          colour
-          image
+        mainMedia {
+          type
+          url
+          publicId
         }
 
-        productImages {
-          view
-          image
+        images {
+          type
+          url
+          publicId
         }
 
-        sizechart {
+        sizeChart {
           id
           name
           slug
@@ -47,7 +165,30 @@ const PRODUCTS_QUERY = gql`
           status
         }
 
-        status
+        rating
+        reviewsCount
+
+        items {
+          id
+          price
+          onDiscount
+          mrp
+          discountPerc
+          discountAmount
+          sellingPrice
+          currency
+          barcode
+          sku
+          stock
+          size
+          colour
+
+          images {
+            type
+            url
+            publicId
+          }
+        }
       }
 
       page
@@ -58,30 +199,29 @@ const PRODUCTS_QUERY = gql`
 `;
 
 /* =========================================================
-   SIZECHART QUERY
+   BRANDS QUERY
 ========================================================= */
 
-const SIZECHARTS_QUERY = gql`
-  query Sizecharts {
-    getSizecharts {
+const BRANDS_QUERY = gql`
+  query Brands {
+    brands {
       id
       name
-      slug
-      image
       status
     }
   }
 `;
 
 /* =========================================================
-   BRANDS QUERY
+   SIZE CHART QUERY
 ========================================================= */
-const BRANDS_QUERY = gql`
-  query Brands {
-    brands {
+
+const SIZE_CHARTS_QUERY = gql`
+  query Sizecharts {
+    sizecharts {
       id
       name
-      description
+      slug
       image
       status
     }
@@ -95,61 +235,61 @@ const BRANDS_QUERY = gql`
 const CREATE_PRODUCT = gql`
   mutation CreateProduct(
     $name: String!
-    $price: Float!
-    $image: String
-    $category: String
-    $brand: ID
-    $description: String
-    $stock: Int
-    $sizes: [String!]
-    $colours: [String!]
-    $colourImages: [ColourImageInput!]
-    $productImages: [ProductImageInput!]
-    $sizechart: ID
     $status: String
+    $subTitle: String
+    $slug: String
+    $description: String
+    $skuPrefix: String
+    $storeId: ID
+    $brand: ID
+    $categories: [String!]
+    $mainMedia: [ProductMediaInput!]
+    $images: [ProductMediaInput!]
+    $sizeChart: ID
+    $items: [ProductItemInput!]
   ) {
     createProduct(
       name: $name
-      price: $price
-      image: $image
-      category: $category
-      brand: $brand
-      description: $description
-      stock: $stock
-      sizes: $sizes
-      colours: $colours
-      colourImages: $colourImages
-      productImages: $productImages
-      sizechart: $sizechart
       status: $status
+      subTitle: $subTitle
+      slug: $slug
+      description: $description
+      skuPrefix: $skuPrefix
+      storeId: $storeId
+      brand: $brand
+      categories: $categories
+      mainMedia: $mainMedia
+      images: $images
+      sizeChart: $sizeChart
+      items: $items
     ) {
       id
       name
-      price
-      image
-      category
+      status
+      subTitle
+      slug
+      description
+      skuPrefix
+      categories
 
       brand {
         id
         name
       }
 
-      description
-      stock
-      sizes
-      colours
-
-      colourImages {
-        colour
-        image
+      mainMedia {
+        type
+        url
+        publicId
       }
 
-      productImages {
-        view
-        image
+      images {
+        type
+        url
+        publicId
       }
 
-      sizechart {
+      sizeChart {
         id
         name
         slug
@@ -157,7 +297,24 @@ const CREATE_PRODUCT = gql`
         status
       }
 
-      status
+      items {
+        id
+        price
+        stock
+        size
+        colour
+        sku
+        barcode
+
+        images {
+          type
+          url
+          publicId
+        }
+      }
+
+      rating
+      reviewsCount
     }
   }
 `;
@@ -170,62 +327,62 @@ const UPDATE_PRODUCT = gql`
   mutation UpdateProduct(
     $id: ID!
     $name: String
-    $price: Float
-    $image: String
-    $category: String
-    $brand: ID
-    $description: String
-    $stock: Int
-    $sizes: [String!]
-    $colours: [String!]
-    $colourImages: [ColourImageInput!]
-    $productImages: [ProductImageInput!]
-    $sizechart: ID
     $status: String
+    $subTitle: String
+    $slug: String
+    $description: String
+    $skuPrefix: String
+    $storeId: ID
+    $brand: ID
+    $categories: [String!]
+    $mainMedia: [ProductMediaInput!]
+    $images: [ProductMediaInput!]
+    $sizeChart: ID
+    $items: [ProductItemInput!]
   ) {
     updateProduct(
       id: $id
       name: $name
-      price: $price
-      image: $image
-      category: $category
-      brand: $brand
-      description: $description
-      stock: $stock
-      sizes: $sizes
-      colours: $colours
-      colourImages: $colourImages
-      productImages: $productImages
-      sizechart: $sizechart
       status: $status
+      subTitle: $subTitle
+      slug: $slug
+      description: $description
+      skuPrefix: $skuPrefix
+      storeId: $storeId
+      brand: $brand
+      categories: $categories
+      mainMedia: $mainMedia
+      images: $images
+      sizeChart: $sizeChart
+      items: $items
     ) {
       id
       name
-      price
-      image
-      category
+      status
+      subTitle
+      slug
+      description
+      skuPrefix
+      categories
 
       brand {
         id
         name
       }
 
-      description
-      stock
-      sizes
-      colours
-
-      colourImages {
-        colour
-        image
+      mainMedia {
+        type
+        url
+        publicId
       }
 
-      productImages {
-        view
-        image
+      images {
+        type
+        url
+        publicId
       }
 
-      sizechart {
+      sizeChart {
         id
         name
         slug
@@ -233,108 +390,49 @@ const UPDATE_PRODUCT = gql`
         status
       }
 
-      status
+      items {
+        id
+        price
+        stock
+        size
+        colour
+        sku
+        barcode
+
+        images {
+          type
+          url
+          publicId
+        }
+      }
+
+      rating
+      reviewsCount
     }
   }
 `;
 
 /* =========================================================
-   DELETE PRODUCT
+   HELPERS
 ========================================================= */
 
-const DELETE_PRODUCT = gql`
-  mutation DeleteProduct($id: ID!) {
-    deleteProduct(id: $id) {
-      id
-    }
-  }
-`;
+const emptyVariant = (): VariantForm => ({
+  colour: "",
+  size: "",
+  price: "",
+  stock: "",
+  sku: "",
+  barcode: "",
+  images: [],
+});
 
 /* =========================================================
-   TYPES
-========================================================= */
-
-type SizechartOption = {
-  id: string;
-  name?: string;
-  slug?: string;
-  image?: string;
-  status?: string;
-};
-
-type SizechartsResponse = {
-  getSizecharts: SizechartOption[];
-};
-
-type BrandOption = {
-  id: string;
-  name: string;
-  slug?: string;
-  description?: string;
-  image?: string;
-  status?: string;
-};
-
-type BrandsResponse = {
-  brands: BrandOption[];
-};
-
-type ProductImage = {
-  view: string;
-  image: string;
-};
-
-type Product = {
-  id: string;
-  name: string;
-  price: number;
-  image?: string;
-  category?: string;
-
-  brand?: {
-    id: string;
-    name: string;
-  } | null;
-
-  description?: string;
-  stock?: number;
-  sizes?: string[];
-  colours?: string[];
-
-  colourImages?: {
-    colour: string;
-    image: string;
-  }[];
-
-  productImages?: ProductImage[];
-
-  sizechart?: {
-    id: string;
-    name?: string;
-    slug?: string;
-    image?: string;
-    status?: string;
-  } | null;
-
-  status?: string;
-};
-
-type ProductsResponse = {
-  products: {
-    products: Product[];
-    page: number;
-    limit: number;
-    hasMore: boolean;
-  };
-};
-
-/* =========================================================
-   MAIN COMPONENT
+   COMPONENT
 ========================================================= */
 
 export default function Products() {
   /* =======================================================
-     PRODUCT DATA
+     PRODUCT QUERY
   ======================================================= */
 
   const {
@@ -346,82 +444,237 @@ export default function Products() {
   } = useQuery<ProductsResponse>(PRODUCTS_QUERY, {
     variables: {
       page: 1,
-      limit: 6,
+      limit: 12,
     },
   });
 
   /* =======================================================
-     SIZECHART DATA
+     BRAND QUERY
   ======================================================= */
 
-  const { data: sizechartData } =
-    useQuery<SizechartsResponse>(SIZECHARTS_QUERY);
+  const {
+    data: brandData,
+    loading: brandsLoading,
+  } = useQuery<BrandsResponse>(BRANDS_QUERY);
 
   /* =======================================================
-     BRAND DATA
+     SIZE CHART QUERY
   ======================================================= */
-const {
-  data: brandData,
-  error: brandError,
-  loading: brandLoading,
-} = useQuery<BrandsResponse>(BRANDS_QUERY);
 
-console.log("BRAND DATA:", brandData);
-console.log("BRAND ERROR:", brandError);
-console.log("BRAND LOADING:", brandLoading);
+  const { data: sizeChartData } =
+    useQuery<SizeChartsResponse>(SIZE_CHARTS_QUERY);
+
   /* =======================================================
      MUTATIONS
   ======================================================= */
 
-  const [createProduct] =
-    useMutation(CREATE_PRODUCT);
+  const [createProduct, { loading: creating }] =
+    useMutation<any>(CREATE_PRODUCT);
 
-  const [updateProduct] =
-    useMutation(UPDATE_PRODUCT);
-
-  const [deleteProduct] =
-    useMutation(DELETE_PRODUCT);
+  const [updateProduct, { loading: updating }] =
+    useMutation<any>(UPDATE_PRODUCT);
 
   /* =======================================================
-     FORM STATE
+     EDITING
   ======================================================= */
 
   const [editingId, setEditingId] =
     useState<string | null>(null);
 
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [image, setImage] = useState("");
-  const [category, setCategory] = useState("");
-  const [brand, setBrand] = useState("");
-  const [description, setDescription] = useState("");
-  const [stock, setStock] = useState("");
-  const [sizes, setSizes] = useState("");
-  const [colours, setColours] = useState("");
-  const [colourImages, setColourImages] =
-    useState("");
-
   /* =======================================================
-     NEW PRODUCT VIEW IMAGES
+     PRODUCT FORM
   ======================================================= */
 
-  const [frontImage, setFrontImage] =
-    useState("");
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState("draft");
+  const [subTitle, setSubTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [description, setDescription] = useState("");
+  const [skuPrefix, setSkuPrefix] = useState("");
+  const [brand, setBrand] = useState("");
+  const [category, setCategory] = useState("");
+  const [sizeChart, setSizeChart] = useState("");
 
-  const [backImage, setBackImage] =
-    useState("");
+  /* =======================================================
+     GLOBAL MEDIA
+  ======================================================= */
 
-  const [sideImage, setSideImage] =
-    useState("");
+  const [selectedMedia, setSelectedMedia] =
+    useState<MediaLibraryItem[]>([]);
 
-  const [detailImage, setDetailImage] =
-    useState("");
+  /* =======================================================
+     VARIANTS
+  ======================================================= */
 
-  const [sizechart, setSizechart] =
-    useState("");
+  const [items, setItems] = useState<VariantForm[]>([
+    emptyVariant(),
+  ]);
 
-  const [status, setStatus] =
-    useState("active");
+  /* =======================================================
+     UI STATE
+  ======================================================= */
+
+  const [search, setSearch] = useState("");
+
+  /* =======================================================
+     BRANDS
+  ======================================================= */
+
+  const activeBrands =
+    brandData?.brands?.filter(
+      (item) =>
+        !item.status ||
+        item.status === "active"
+    ) ?? [];
+
+  /* =======================================================
+     SIZE CHARTS
+  ======================================================= */
+
+  const activeSizeCharts =
+    sizeChartData?.sizecharts?.filter(
+      (item) =>
+        !item.status ||
+        item.status === "active"
+    ) ?? [];
+
+  /* =======================================================
+     MEDIA HELPERS
+  ======================================================= */
+
+  const mediaToProductMedia = (
+    media: MediaLibraryItem
+  ): ProductMedia => ({
+    type: media.mediaType || "image",
+    url: media.url,
+    publicId: media.publicId || null,
+  });
+
+  const addGlobalMedia = (
+    media: MediaLibraryItem
+  ) => {
+    setSelectedMedia((previous) => {
+      if (
+        previous.some(
+          (item) => item.id === media.id
+        )
+      ) {
+        return previous;
+      }
+
+      return [...previous, media];
+    });
+  };
+
+  const removeGlobalMedia = (
+    mediaId: string
+  ) => {
+    setSelectedMedia((previous) =>
+      previous.filter(
+        (item) => item.id !== mediaId
+      )
+    );
+  };
+
+  const addVariantMedia = (
+    index: number,
+    media: MediaLibraryItem
+  ) => {
+    setItems((previous) =>
+      previous.map(
+        (item, itemIndex) => {
+          if (itemIndex !== index) {
+            return item;
+          }
+
+          const alreadyExists =
+            item.images.some(
+              (image) =>
+                image.url === media.url
+            );
+
+          if (alreadyExists) {
+            return item;
+          }
+
+          return {
+            ...item,
+            images: [
+              ...item.images,
+              mediaToProductMedia(media),
+            ],
+          };
+        }
+      )
+    );
+  };
+
+  const removeVariantMedia = (
+    index: number,
+    imageUrl: string
+  ) => {
+    setItems((previous) =>
+      previous.map(
+        (item, itemIndex) => {
+          if (itemIndex !== index) {
+            return item;
+          }
+
+          return {
+            ...item,
+            images: item.images.filter(
+              (image) =>
+                image.url !== imageUrl
+            ),
+          };
+        }
+      )
+    );
+  };
+
+  /* =======================================================
+     VARIANT FUNCTIONS
+  ======================================================= */
+
+  const addItem = () => {
+    setItems((previous) => [
+      ...previous,
+      emptyVariant(),
+    ]);
+  };
+
+  const removeItem = (
+    index: number
+  ) => {
+    setItems((previous) => {
+      if (previous.length === 1) {
+        return previous;
+      }
+
+      return previous.filter(
+        (_, itemIndex) =>
+          itemIndex !== index
+      );
+    });
+  };
+
+  const updateItem = (
+    index: number,
+    field: keyof Omit<VariantForm, "images">,
+    value: string
+  ) => {
+    setItems((previous) =>
+      previous.map(
+        (item, itemIndex) =>
+          itemIndex === index
+            ? {
+                ...item,
+                [field]: value,
+              }
+            : item
+      )
+    );
+  };
 
   /* =======================================================
      RESET FORM
@@ -431,37 +684,26 @@ console.log("BRAND LOADING:", brandLoading);
     setEditingId(null);
 
     setName("");
-    setPrice("");
-    setImage("");
-    setCategory("");
-    setBrand("");
+    setStatus("draft");
+    setSubTitle("");
+    setSlug("");
     setDescription("");
-    setStock("");
-    setSizes("");
-    setColours("");
-    setColourImages("");
+    setSkuPrefix("");
 
-    setFrontImage("");
-    setBackImage("");
-    setSideImage("");
-    setDetailImage("");
+    setBrand("");
+    setCategory("");
+    setSizeChart("");
 
-    setSizechart("");
+    setSelectedMedia([]);
 
-    setStatus("active");
-  };
+    setItems([
+      emptyVariant(),
+    ]);
 
-  /* =======================================================
-     CONVERT COMMA STRING TO ARRAY
-  ======================================================= */
-
-  const convertToArray = (value: string) => {
-    return value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(
-        (item) => item.length > 0
-      );
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
   /* =======================================================
@@ -469,118 +711,186 @@ console.log("BRAND LOADING:", brandLoading);
   ======================================================= */
 
   const handleSubmit = async (
-    e: React.FormEvent
+    event: React.FormEvent
   ) => {
-    e.preventDefault();
+    event.preventDefault();
+
+    /* -----------------------------------------------------
+       NAME
+    ----------------------------------------------------- */
 
     if (!name.trim()) {
-      alert("Product name is required");
-      return;
-    }
-
-    if (!price || Number(price) <= 0) {
-      alert("Please enter a valid price");
+      alert(
+        "Product name is required."
+      );
       return;
     }
 
     /* -----------------------------------------------------
-       COLOUR IMAGE CONVERSION
+       VARIANTS
     ----------------------------------------------------- */
 
-    const colourImageArray = colourImages
-      .split(",")
-      .map((item) => {
-        const [
-          colour,
-          ...imageParts
-        ] = item.split("=");
-
-        return {
-          colour: colour?.trim() || "",
-          image: imageParts
-            .join("=")
-            .trim(),
-        };
-      })
+    const validItems = items
       .filter(
         (item) =>
-          item.colour &&
-          item.image
+          item.colour.trim() ||
+          item.size.trim() ||
+          item.price.trim() ||
+          item.stock.trim() ||
+          item.sku.trim() ||
+          item.barcode.trim() ||
+          item.images.length > 0
+      )
+      .map((item) => ({
+        colour:
+          item.colour.trim() ||
+          undefined,
+
+        size:
+          item.size.trim() ||
+          undefined,
+
+        price:
+          item.price.trim()
+            ? Number(item.price)
+            : undefined,
+
+        stock:
+          item.stock.trim()
+            ? Number(item.stock)
+            : undefined,
+
+        sku:
+          item.sku.trim() ||
+          undefined,
+
+        barcode:
+          item.barcode.trim() ||
+          undefined,
+
+        currency: "INR",
+
+        images: item.images,
+      }));
+
+    if (validItems.length === 0) {
+      alert(
+        "Please add at least one product variant."
+      );
+      return;
+    }
+
+    /* -----------------------------------------------------
+       NUMBER VALIDATION
+    ----------------------------------------------------- */
+
+    const invalidNumber =
+      validItems.some(
+        (item) =>
+          (item.price !== undefined &&
+            Number.isNaN(item.price)) ||
+          (item.stock !== undefined &&
+            Number.isNaN(item.stock))
       );
 
-    /* -----------------------------------------------------
-       PRODUCT VIEW IMAGES
-    ----------------------------------------------------- */
-
-    const productImages = [
-      {
-        view: "front",
-        image: frontImage.trim(),
-      },
-      {
-        view: "back",
-        image: backImage.trim(),
-      },
-      {
-        view: "side",
-        image: sideImage.trim(),
-      },
-      {
-        view: "detail",
-        image: detailImage.trim(),
-      },
-    ].filter(
-      (item) => item.image
-    );
+    if (invalidNumber) {
+      alert(
+        "Price and stock must be valid numbers."
+      );
+      return;
+    }
 
     /* -----------------------------------------------------
-       PRODUCT VARIABLES
+       CATEGORIES
     ----------------------------------------------------- */
+
+    const categories =
+      category.trim()
+        ? [category.trim()]
+        : [];
+
+    /* -----------------------------------------------------
+       GLOBAL MEDIA
+    ----------------------------------------------------- */
+
+    const allGlobalMedia =
+      selectedMedia.map(
+        mediaToProductMedia
+      );
+
+    const mainMedia =
+      selectedMedia.length > 0
+        ? [
+            mediaToProductMedia(
+              selectedMedia[0]
+            ),
+          ]
+        : [];
+
+    const images =
+      allGlobalMedia;
+
+    /* -----------------------------------------------------
+       VARIABLES
+    ----------------------------------------------------- */
+const cleanProductMedia = (media: any) => ({
+  type: media?.type || "image",
+  url: media?.url || "",
+  publicId: media?.publicId || "",
+});
+
+const cleanProductItems = validItems.map((item: any) => ({
+  ...item,
+  images: (item.images || []).map(cleanProductMedia),
+}));
 
     const variables = {
       name: name.trim(),
 
-      price: Number(price),
+      status:
+        status || "draft",
 
-      image:
-        image.trim() || undefined,
+      subTitle:
+        subTitle.trim() ||
+        undefined,
 
-      category:
-        category.trim() || undefined,
+      slug:
+        slug.trim() ||
+        undefined,
+
+      description:
+        description.trim() ||
+        undefined,
+
+      skuPrefix:
+        skuPrefix.trim() ||
+        undefined,
 
       brand:
         brand || undefined,
 
-      description:
-        description.trim() || undefined,
+      categories,
 
-      stock:
-        stock === ""
-          ? undefined
-          : Number(stock),
+      mainMedia,
 
-      sizes:
-        convertToArray(sizes),
+      images,
 
-      colours:
-        convertToArray(colours),
+      sizeChart:
+        sizeChart || undefined,
 
-      colourImages:
-        colourImageArray,
-
-      productImages,
-
-      sizechart:
-        sizechart || undefined,
-
-      status,
+items: cleanProductItems,
     };
 
-    try {
-      /* ---------------------------------------------------
-         UPDATE
-      --------------------------------------------------- */
+    console.log(
+      "Product variables:",
+      variables
+    );
 
+    /* -----------------------------------------------------
+       SAVE
+    ----------------------------------------------------- */
+
+    try {
       if (editingId) {
         await updateProduct({
           variables: {
@@ -590,35 +900,30 @@ console.log("BRAND LOADING:", brandLoading);
         });
 
         alert(
-          "Product updated successfully"
+          "Product updated successfully."
         );
-      }
-
-      /* ---------------------------------------------------
-         CREATE
-      --------------------------------------------------- */
-
-      else {
+      } else {
         await createProduct({
           variables,
         });
 
         alert(
-          "Product created successfully"
+          "Product created successfully."
         );
       }
 
       resetForm();
 
       await refetch();
-    } catch (err) {
+    } catch (mutationError: any) {
       console.error(
-        "Product operation error:",
-        err
+        "Product save error:",
+        mutationError
       );
 
       alert(
-        "Operation failed"
+        mutationError?.message ||
+          "Unable to save product."
       );
     }
   };
@@ -636,94 +941,116 @@ console.log("BRAND LOADING:", brandLoading);
       product.name || ""
     );
 
-    setPrice(
-      product.price !== undefined
-        ? String(product.price)
-        : ""
+    setStatus(
+      product.status || "draft"
     );
 
-    setImage(
-      product.image || ""
+    setSubTitle(
+      product.subTitle || ""
     );
 
-    setCategory(
-      product.category || ""
-    );
-
-    setBrand(
-      product.brand?.id || ""
+    setSlug(
+      product.slug || ""
     );
 
     setDescription(
       product.description || ""
     );
 
-    setStock(
-      product.stock !== undefined
-        ? String(product.stock)
-        : ""
+    setSkuPrefix(
+      product.skuPrefix || ""
     );
 
-    setSizes(
-      product.sizes?.join(", ") || ""
+    setBrand(
+      product.brand?.id || ""
     );
 
-    setColours(
-      product.colours?.join(", ") || ""
+    setCategory(
+      product.categories?.[0] || ""
     );
 
-    setColourImages(
-      product.colourImages
-        ?.map(
-          (item) =>
-            `${item.colour}=${item.image}`
+    setSizeChart(
+      product.sizeChart?.id || ""
+    );
+
+    /* -----------------------------------------------------
+       LOAD GLOBAL MEDIA
+    ----------------------------------------------------- */
+
+    const globalMedia = [
+      ...(product.mainMedia || []),
+      ...(product.images || []),
+    ];
+
+    const uniqueMedia =
+      globalMedia.filter(
+        (media, index, array) =>
+          array.findIndex(
+            (item) =>
+              item.url === media.url
+          ) === index
+      );
+
+    setSelectedMedia(
+      uniqueMedia.map(
+        (media, index) => ({
+          id:
+            media.publicId ||
+            `existing-media-${index}-${media.url}`,
+          mediaType:
+            media.type || "image",
+          url: media.url,
+          publicId:
+            media.publicId || undefined,
+        })
+      )
+    );
+
+    /* -----------------------------------------------------
+       LOAD VARIANTS
+    ----------------------------------------------------- */
+
+    if (
+      product.items &&
+      product.items.length > 0
+    ) {
+      setItems(
+        product.items.map(
+          (item) => ({
+            colour:
+              item.colour || "",
+
+            size:
+              item.size || "",
+
+            price:
+              item.price !== null &&
+              item.price !== undefined
+                ? String(item.price)
+                : "",
+
+            stock:
+              item.stock !== null &&
+              item.stock !== undefined
+                ? String(item.stock)
+                : "",
+
+            sku:
+              item.sku || "",
+
+            barcode:
+              item.barcode || "",
+
+            images:
+              item.images || [],
+          })
         )
-        .join(", ") || ""
-    );
-
-    /* -----------------------------------------------------
-       LOAD PRODUCT VIEW IMAGES
-    ----------------------------------------------------- */
-
-    setFrontImage(
-      product.productImages?.find(
-        (item) =>
-          item.view === "front"
-      )?.image || ""
-    );
-
-    setBackImage(
-      product.productImages?.find(
-        (item) =>
-          item.view === "back"
-      )?.image || ""
-    );
-
-    setSideImage(
-      product.productImages?.find(
-        (item) =>
-          item.view === "side"
-      )?.image || ""
-    );
-
-    setDetailImage(
-      product.productImages?.find(
-        (item) =>
-          item.view === "detail"
-      )?.image || ""
-    );
-
-    /* -----------------------------------------------------
-       LOAD SELECTED SIZE GUIDE
-    ----------------------------------------------------- */
-
-    setSizechart(
-      product.sizechart?.id || ""
-    );
-
-    setStatus(
-      product.status || "active"
-    );
+      );
+    } else {
+      setItems([
+        emptyVariant(),
+      ]);
+    }
 
     window.scrollTo({
       top: 0,
@@ -732,64 +1059,28 @@ console.log("BRAND LOADING:", brandLoading);
   };
 
   /* =======================================================
-     HANDLE DELETE
-  ======================================================= */
-
-  const handleDelete = async (
-    id: string
-  ) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this product?"
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await deleteProduct({
-        variables: {
-          id,
-        },
-      });
-
-      alert(
-        "Product deleted successfully"
-      );
-
-      await refetch();
-    } catch (err) {
-      console.error(
-        "Delete error:",
-        err
-      );
-
-      alert("Delete failed");
-    }
-  };
-
-  /* =======================================================
      LOAD MORE
   ======================================================= */
 
-  const handleLoadMore = async () => {
-    if (
-      !data?.products.hasMore ||
-      loading
-    ) {
-      return;
-    }
+  const handleLoadMore =
+    async () => {
+      if (
+        loading ||
+        !data?.products?.hasMore
+      ) {
+        return;
+      }
 
-    await fetchMore({
-      variables: {
-        page:
-          data.products.page + 1,
+      await fetchMore({
+        variables: {
+          page:
+            data.products.page + 1,
 
-        limit:
-          data.products.limit,
-      },
-    });
-  };
+          limit:
+            data.products.limit,
+        },
+      });
+    };
 
   /* =======================================================
      LOADING
@@ -799,7 +1090,7 @@ console.log("BRAND LOADING:", brandLoading);
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#C9A227]" />
+          <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-4 border-gray-200 border-t-[#C9A227]" />
 
           <p className="text-sm text-gray-500">
             Loading products...
@@ -815,12 +1106,12 @@ console.log("BRAND LOADING:", brandLoading);
 
   if (error) {
     return (
-      <div className="m-6 rounded-xl border border-red-200 bg-red-50 p-5 text-red-600">
-        <p className="font-semibold">
+      <div className="m-6 rounded-xl border border-red-200 bg-red-50 p-5">
+        <p className="font-semibold text-red-700">
           Unable to load products
         </p>
 
-        <p className="mt-1 text-sm">
+        <p className="mt-2 text-sm text-red-600">
           {error.message}
         </p>
       </div>
@@ -828,62 +1119,83 @@ console.log("BRAND LOADING:", brandLoading);
   }
 
   /* =======================================================
-     PRODUCTS
+     PRODUCT DATA
   ======================================================= */
 
   const products =
-    data?.products.products ?? [];
+    data?.products?.products ?? [];
 
   /* =======================================================
-     ACTIVE PRODUCTS
+     SEARCH
   ======================================================= */
+
+  const filteredProducts =
+    products.filter(
+      (product) => {
+        const query =
+          search
+            .trim()
+            .toLowerCase();
+
+        if (!query) {
+          return true;
+        }
+
+        const productName =
+          product.name
+            ?.toLowerCase() || "";
+
+        const productBrand =
+          product.brand?.name
+            ?.toLowerCase() || "";
+
+        const productCategory =
+          product.categories
+            ?.join(" ")
+            .toLowerCase() || "";
+
+        return (
+          productName.includes(query) ||
+          productBrand.includes(query) ||
+          productCategory.includes(query)
+        );
+      }
+    );
+
+  /* =======================================================
+     SUMMARY
+  ======================================================= */
+
+  const totalProducts =
+    products.length;
 
   const activeProducts =
     products.filter(
       (product) =>
-        product.status === "active"
+        product.status === "active" ||
+        product.status === "published"
     ).length;
 
-  /* =======================================================
-     LOW STOCK
-  ======================================================= */
+  const totalVariants =
+    products.reduce(
+      (total, product) =>
+        total +
+        (product.items?.length || 0),
+      0
+    );
 
-  const lowStockProducts =
-    products.filter(
-      (product) =>
-        product.stock !== undefined &&
-        product.stock > 0 &&
-        product.stock <= 5
-    ).length;
-
-  /* =======================================================
-     OUT OF STOCK
-  ======================================================= */
-
-  const outOfStockProducts =
-    products.filter(
-      (product) =>
-        product.stock === 0
-    ).length;
-
-  /* =======================================================
-     ACTIVE SIZECHARTS
-  ======================================================= */
-
-  const activeSizecharts =
-    sizechartData?.getSizecharts?.filter(
-      (chart) =>
-        chart.status === "active"
-    ) ?? [];
-
-  /* =======================================================
-     ACTIVE BRANDS
-  ======================================================= */
-const activeBrands =
-  brandData?.brands?.filter(
-    (item) =>
-      item.status === "active"
-  ) ?? [];
+  const totalStock =
+    products.reduce(
+      (total, product) =>
+        total +
+        (product.items || []).reduce(
+          (itemTotal, item) =>
+            itemTotal +
+            Number(item.stock || 0),
+          0
+        ),
+      0
+    );
 
   /* =======================================================
      RETURN
@@ -892,49 +1204,40 @@ const activeBrands =
   return (
     <div className="min-h-screen bg-[#F8F9FB] p-4 sm:p-6 lg:p-8">
 
-      {/* ===================================================
+      {/* =================================================
           HEADER
-      =================================================== */}
+      ================================================= */}
 
       <div className="mb-8">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
 
           <div>
-            <p className="mb-1 text-sm font-medium text-[#C9A227]">
+            <p className="mb-1 text-sm font-medium tracking-wide text-[#C9A227]">
               ARUNODAYA COLLECTIONS
             </p>
 
-            <h1 className="text-3xl font-bold tracking-tight text-[#172033]">
+            <h1 className="text-3xl font-bold text-[#0B1F3A]">
               Products
             </h1>
 
             <p className="mt-1 text-sm text-gray-500">
-              Manage your product catalogue,
-              inventory and variants.
+              Manage products, variants, pricing and stock.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => {
-              resetForm();
-
-              window.scrollTo({
-                top: 0,
-                behavior: "smooth",
-              });
-            }}
-            className="rounded-lg bg-[#0B1F3A] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#102f56]"
+            onClick={resetForm}
+            className="rounded-lg bg-[#0B1F3A] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#17365f]"
           >
             + Add New Product
           </button>
-
         </div>
       </div>
 
-      {/* ===================================================
+      {/* =================================================
           SUMMARY CARDS
-      =================================================== */}
+      ================================================= */}
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
@@ -943,12 +1246,8 @@ const activeBrands =
             Total Products
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-[#172033]">
-            {products.length}
-          </p>
-
-          <p className="mt-1 text-xs text-gray-400">
-            Products currently loaded
+          <p className="mt-2 text-3xl font-bold text-[#0B1F3A]">
+            {totalProducts}
           </p>
         </div>
 
@@ -960,45 +1259,33 @@ const activeBrands =
           <p className="mt-2 text-3xl font-bold text-green-600">
             {activeProducts}
           </p>
+        </div>
 
-          <p className="mt-1 text-xs text-gray-400">
-            Currently available
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">
+            Total Variants
+          </p>
+
+          <p className="mt-2 text-3xl font-bold text-[#0B1F3A]">
+            {totalVariants}
           </p>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-gray-500">
-            Low Stock
+            Total Stock
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-orange-500">
-            {lowStockProducts}
-          </p>
-
-          <p className="mt-1 text-xs text-gray-400">
-            5 units or less
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">
-            Out of Stock
-          </p>
-
-          <p className="mt-2 text-3xl font-bold text-red-600">
-            {outOfStockProducts}
-          </p>
-
-          <p className="mt-1 text-xs text-gray-400">
-            Requires inventory update
+          <p className="mt-2 text-3xl font-bold text-[#C9A227]">
+            {totalStock}
           </p>
         </div>
 
       </div>
 
-      {/* ===================================================
+      {/* =================================================
           PRODUCT FORM
-      =================================================== */}
+      ================================================= */}
 
       <div
         className={`mb-8 overflow-hidden rounded-xl border bg-white shadow-sm ${
@@ -1010,35 +1297,32 @@ const activeBrands =
 
         {/* FORM HEADER */}
 
-        <div className="border-b border-gray-100 bg-white px-5 py-4 sm:px-6">
+        <div className="border-b border-gray-100 px-5 py-5 sm:px-6">
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-4">
 
             <div>
-              <h2 className="text-lg font-bold text-[#172033]">
+              <h2 className="text-lg font-bold text-[#0B1F3A]">
                 {editingId
                   ? "Edit Product"
                   : "Add New Product"}
               </h2>
 
               <p className="mt-1 text-xs text-gray-500">
-                {editingId
-                  ? "Update product information and variants."
-                  : "Add a new product to your Arunodaya Collections catalogue."}
+                Product information and variants.
               </p>
             </div>
 
             {editingId && (
-              <span className="rounded-full bg-[#C9A227]/10 px-3 py-1 text-xs font-semibold text-[#9B7A12]">
+              <span className="rounded-full bg-[#C9A227]/10 px-3 py-1 text-xs font-semibold text-[#9A7810]">
                 Editing
               </span>
             )}
 
           </div>
-
         </div>
 
-        {/* FORM */}
+        {/* FORM BODY */}
 
         <form
           onSubmit={handleSubmit}
@@ -1051,41 +1335,161 @@ const activeBrands =
 
           <div className="mb-8">
 
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-[#172033]">
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-[#0B1F3A]">
               Basic Information
             </h3>
 
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+
+              {/* NAME */}
 
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Product Name *
                 </label>
 
                 <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="Example: Designer Silk Kurti"
+                  type="text"
                   value={name}
-                  onChange={(e) =>
-                    setName(e.target.value)
+                  onChange={(event) =>
+                    setName(event.target.value)
                   }
+                  placeholder="Example: Designer Silk Kurti"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
                 />
-
               </div>
 
-              <div>
+              {/* STATUS */}
 
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Status
+                </label>
+
+                <select
+                  value={status}
+                  onChange={(event) =>
+                    setStatus(event.target.value)
+                  }
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
+                >
+                  <option value="draft">
+                    Draft
+                  </option>
+
+                  <option value="active">
+                    Active
+                  </option>
+
+                  <option value="published">
+                    Published
+                  </option>
+
+                  <option value="trash">
+                    Trash
+                  </option>
+                </select>
+              </div>
+
+              {/* SUBTITLE */}
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Sub Title
+                </label>
+
+                <input
+                  type="text"
+                  value={subTitle}
+                  onChange={(event) =>
+                    setSubTitle(event.target.value)
+                  }
+                  placeholder="Short product subtitle"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
+                />
+              </div>
+
+              {/* SLUG */}
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Slug
+                </label>
+
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(event) =>
+                    setSlug(event.target.value)
+                  }
+                  placeholder="designer-silk-kurti"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
+                />
+              </div>
+
+              {/* SKU PREFIX */}
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  SKU Prefix
+                </label>
+
+                <input
+                  type="text"
+                  value={skuPrefix}
+                  onChange={(event) =>
+                    setSkuPrefix(event.target.value)
+                  }
+                  placeholder="KURTI"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm uppercase outline-none focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
+                />
+              </div>
+
+              {/* BRAND */}
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Brand
+                </label>
+
+                <select
+                  value={brand}
+                  onChange={(event) =>
+                    setBrand(event.target.value)
+                  }
+                  disabled={brandsLoading}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 disabled:bg-gray-100"
+                >
+                  <option value="">
+                    Select Brand
+                  </option>
+
+                  {activeBrands.map(
+                    (item) => (
+                      <option
+                        key={item.id}
+                        value={item.id}
+                      >
+                        {item.name}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {/* CATEGORY */}
+
+              <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Category
                 </label>
 
                 <select
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
                   value={category}
-                  onChange={(e) =>
-                    setCategory(e.target.value)
+                  onChange={(event) =>
+                    setCategory(event.target.value)
                   }
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
                 >
                   <option value="">
                     Select Category
@@ -1103,47 +1507,42 @@ const activeBrands =
                     Kids
                   </option>
                 </select>
-
               </div>
 
-              <div>
+              {/* SIZE CHART */}
 
+              <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Brand
+                  Size Chart
                 </label>
 
                 <select
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  value={brand}
-                  onChange={(e) =>
-                    setBrand(e.target.value)
+                  value={sizeChart}
+                  onChange={(event) =>
+                    setSizeChart(event.target.value)
                   }
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
                 >
-
                   <option value="">
-                    No Brand
+                    No Size Chart
                   </option>
 
-                  {activeBrands.map((item) => (
-                    <option
-                      key={item.id}
-                      value={item.id}
-                    >
-                      {item.name}
-                    </option>
-                  ))}
-
+                  {activeSizeCharts.map(
+                    (item) => (
+                      <option
+                        key={item.id}
+                        value={item.id}
+                      >
+                        {item.name}
+                      </option>
+                    )
+                  )}
                 </select>
-
-                {activeBrands.length === 0 && (
-                  <p className="mt-2 text-xs text-orange-500">
-                    No active brands are available. Create one from the Brands page.
-                  </p>
-                )}
-
               </div>
 
-              <div className="lg:col-span-2">
+              {/* DESCRIPTION */}
+
+              <div className="md:col-span-2">
 
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Description
@@ -1151,14 +1550,14 @@ const activeBrands =
 
                 <textarea
                   rows={4}
-                  className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="Describe the product..."
                   value={description}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setDescription(
-                      e.target.value
+                      event.target.value
                     )
                   }
+                  placeholder="Describe the product..."
+                  className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
                 />
 
               </div>
@@ -1168,160 +1567,85 @@ const activeBrands =
           </div>
 
           {/* =================================================
-              PRICE & INVENTORY
+              MEDIA LIBRARY
           ================================================= */}
 
           <div className="mb-8 border-t border-gray-100 pt-8">
 
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-[#172033]">
-              Pricing & Inventory
-            </h3>
+            <div className="mb-4">
 
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-[#0B1F3A]">
+                Global Product Images
+              </h3>
 
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Price (₹) *
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="799"
-                  value={price}
-                  onChange={(e) =>
-                    setPrice(e.target.value)
-                  }
-                />
-
-              </div>
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Stock Quantity
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="20"
-                  value={stock}
-                  onChange={(e) =>
-                    setStock(e.target.value)
-                  }
-                />
-
-              </div>
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Status
-                </label>
-
-                <select
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value)
-                  }
-                >
-
-                  <option value="active">
-                    Active
-                  </option>
-
-                  <option value="inactive">
-                    Inactive
-                  </option>
-
-                </select>
-
-              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Select images from the Media Library. The first
+                selected image will be used as the main image.
+              </p>
 
             </div>
 
-          </div>
+            <MediaLibrary
+              selectedMedia={selectedMedia}
+              onSelect={addGlobalMedia}
+            />
 
-          {/* =================================================
-              MAIN PRODUCT IMAGE
-          ================================================= */}
+            {/* SELECTED GLOBAL IMAGES */}
 
-          <div className="mb-8 border-t border-gray-100 pt-8">
+            {selectedMedia.length > 0 && (
+              <div className="mt-5">
 
-            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-[#172033]">
-              Main Product Image
-            </h3>
+                <div className="mb-3 flex items-center justify-between">
 
-            <p className="mb-4 text-xs text-gray-500">
-              This is the main image shown on the Shop page.
-            </p>
-<label className="mb-2 block text-sm font-semibold text-gray-700">
-  Main Product Image
-</label>
-
-<input
-  type="file"
-  accept="image/*"
-  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-  onChange={async (e) => {
-    const file = e.target.files?.[0];
-
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Upload failed"
-        );
-      }
-
-      setImage(result.imageUrl);
-
-      alert("Main image uploaded successfully");
-    } catch (error) {
-      console.error("Image upload error:", error);
-      alert("Image upload failed");
-    }
-  }}
-/>
-
-            {image && (
-              <div className="mt-4 flex items-center gap-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
-
-                <img
-                  src={image}
-                  alt="Product preview"
-                  className="h-20 w-20 rounded-lg object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display =
-                      "none";
-                  }}
-                />
-
-                <div>
-
-                  <p className="text-sm font-semibold text-gray-700">
-                    Image Preview
+                  <p className="text-xs font-semibold text-gray-600">
+                    Selected Images
                   </p>
 
                   <p className="text-xs text-gray-400">
-                    Main product image
+                    {selectedMedia.length} selected
                   </p>
+
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+
+                  {selectedMedia.map(
+                    (media, index) => (
+                      <div
+                        key={media.id}
+                        className="relative overflow-hidden rounded-lg border border-gray-200 bg-white"
+                      >
+
+                        <img
+                          src={media.url}
+                          alt={
+                            media.altText ||
+                            "Selected product image"
+                          }
+                          className="h-28 w-full object-cover"
+                        />
+
+                        {index === 0 && (
+                          <span className="absolute left-2 top-2 rounded-full bg-[#0B1F3A] px-2 py-1 text-[10px] font-semibold text-white">
+                            Main
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeGlobalMedia(
+                              media.id
+                            )
+                          }
+                          className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-1 text-[10px] font-bold text-white"
+                        >
+                          ×
+                        </button>
+
+                      </div>
+                    )
+                  )}
 
                 </div>
 
@@ -1331,268 +1655,308 @@ const activeBrands =
           </div>
 
           {/* =================================================
-              PRODUCT VIEW IMAGES
+              VARIANTS
           ================================================= */}
 
           <div className="mb-8 border-t border-gray-100 pt-8">
 
-            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-[#172033]">
-              Product Views
-            </h3>
-
-            <p className="mb-5 text-xs text-gray-500">
-              Add different views so customers can see the
-              product from different sides.
-            </p>
-
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
-              {/* FRONT */}
+            <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
 
               <div>
 
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Front Image
-                </label>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-[#0B1F3A]">
+                  Product Variants
+                </h3>
 
-                <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="/products/product-front.jpg"
-                  value={frontImage}
-                  onChange={(e) =>
-                    setFrontImage(
-                      e.target.value
-                    )
-                  }
-                />
-
-                {frontImage && (
-                  <img
-                    src={frontImage}
-                    alt="Front preview"
-                    className="mt-3 h-32 w-full rounded-lg object-contain bg-gray-50"
-                    onError={(e) => {
-                      e.currentTarget.style.display =
-                        "none";
-                    }}
-                  />
-                )}
-
-              </div>
-
-              {/* BACK */}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Back Image
-                </label>
-
-                <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="/products/product-back.jpg"
-                  value={backImage}
-                  onChange={(e) =>
-                    setBackImage(
-                      e.target.value
-                    )
-                  }
-                />
-
-                {backImage && (
-                  <img
-                    src={backImage}
-                    alt="Back preview"
-                    className="mt-3 h-32 w-full rounded-lg object-contain bg-gray-50"
-                    onError={(e) => {
-                      e.currentTarget.style.display =
-                        "none";
-                    }}
-                  />
-                )}
-
-              </div>
-
-              {/* SIDE */}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Side Image
-                </label>
-
-                <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="/products/product-side.jpg"
-                  value={sideImage}
-                  onChange={(e) =>
-                    setSideImage(
-                      e.target.value
-                    )
-                  }
-                />
-
-                {sideImage && (
-                  <img
-                    src={sideImage}
-                    alt="Side preview"
-                    className="mt-3 h-32 w-full rounded-lg object-contain bg-gray-50"
-                    onError={(e) => {
-                      e.currentTarget.style.display =
-                        "none";
-                    }}
-                  />
-                )}
-
-              </div>
-
-              {/* DETAIL */}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Detail Image
-                </label>
-
-                <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="/products/product-detail.jpg"
-                  value={detailImage}
-                  onChange={(e) =>
-                    setDetailImage(
-                      e.target.value
-                    )
-                  }
-                />
-
-                {detailImage && (
-                  <img
-                    src={detailImage}
-                    alt="Detail preview"
-                    className="mt-3 h-32 w-full rounded-lg object-contain bg-gray-50"
-                    onError={(e) => {
-                      e.currentTarget.style.display =
-                        "none";
-                    }}
-                  />
-                )}
-
-              </div>
-
-            </div>
-
-            <div className="mt-4 rounded-lg bg-blue-50 px-4 py-3">
-
-              <p className="text-xs leading-5 text-blue-700">
-                These images are optional. Add Front, Back,
-                Side and Detail images whenever you have
-                them. Customers will be able to switch
-                between the views on the product page.
-              </p>
-
-            </div>
-
-          </div>
-
-          {/* =================================================
-              PRODUCT VARIANTS
-          ================================================= */}
-
-          <div className="mb-8 border-t border-gray-100 pt-8">
-
-            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-[#172033]">
-              Product Variants
-            </h3>
-
-            <p className="mb-4 text-xs text-gray-500">
-              Add sizes and colours separated by commas.
-            </p>
-
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Available Sizes
-                </label>
-
-                <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="XS, S, M, L, XL"
-                  value={sizes}
-                  onChange={(e) =>
-                    setSizes(e.target.value)
-                  }
-                />
-
-              </div>
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Available Colours
-                </label>
-
-                <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-                  placeholder="White, Black, Yellow, Maroon"
-                  value={colours}
-                  onChange={(e) =>
-                    setColours(e.target.value)
-                  }
-                />
-
-              </div>
-
-            </div>
-
-            {/* =================================================
-                SIZE GUIDE
-            ================================================= */}
-
-            <div className="mt-5">
-
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Size Guide
-              </label>
-
-              <select
-                value={sizechart}
-                onChange={(e) =>
-                  setSizechart(
-                    e.target.value
-                  )
-                }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-              >
-
-                <option value="">
-                  No Size Guide
-                </option>
-
-                {activeSizecharts.map(
-                  (chart) => (
-                    <option
-                      key={chart.id}
-                      value={chart.id}
-                    >
-                      {chart.name}
-                    </option>
-                  )
-                )}
-
-              </select>
-
-              <p className="mt-2 text-xs text-gray-400">
-                Select the size chart that should
-                appear for this product.
-              </p>
-
-              {activeSizecharts.length === 0 && (
-                <p className="mt-2 text-xs text-orange-500">
-                  No active size guides are available.
-                  Create one from the Sizechart page.
+                <p className="mt-1 text-xs text-gray-500">
+                  Add Colour and Size combinations with their
+                  own price, stock and images.
                 </p>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={addItem}
+                className="rounded-lg border border-[#0B1F3A] px-4 py-2.5 text-xs font-semibold text-[#0B1F3A] transition hover:bg-[#0B1F3A] hover:text-white"
+              >
+                + Add Variant
+              </button>
+
+            </div>
+
+            <div className="space-y-4">
+
+              {items.map(
+                (item, index) => (
+
+                  <div
+                    key={index}
+                    className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                  >
+
+                    {/* VARIANT HEADER */}
+
+                    <div className="mb-4 flex items-center justify-between">
+
+                      <div>
+
+                        <p className="text-sm font-bold text-[#0B1F3A]">
+                          Variant {index + 1}
+                        </p>
+
+                        <p className="text-[11px] text-gray-400">
+                          Item level variant
+                        </p>
+
+                      </div>
+
+                      {items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeItem(index)
+                          }
+                          className="rounded-md px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      )}
+
+                    </div>
+
+                    {/* VARIANT FIELDS */}
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+
+                      {/* COLOUR */}
+
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold text-gray-600">
+                          Colour
+                        </label>
+
+                        <input
+                          type="text"
+                          value={item.colour}
+                          onChange={(event) =>
+                            updateItem(
+                              index,
+                              "colour",
+                              event.target.value
+                            )
+                          }
+                          placeholder="Black"
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C9A227]"
+                        />
+                      </div>
+
+                      {/* SIZE */}
+
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold text-gray-600">
+                          Size
+                        </label>
+
+                        <input
+                          type="text"
+                          value={item.size}
+                          onChange={(event) =>
+                            updateItem(
+                              index,
+                              "size",
+                              event.target.value
+                            )
+                          }
+                          placeholder="M"
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C9A227]"
+                        />
+                      </div>
+
+                      {/* PRICE */}
+
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold text-gray-600">
+                          Price (₹)
+                        </label>
+
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.price}
+                          onChange={(event) =>
+                            updateItem(
+                              index,
+                              "price",
+                              event.target.value
+                            )
+                          }
+                          placeholder="799"
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C9A227]"
+                        />
+                      </div>
+
+                      {/* STOCK */}
+
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold text-gray-600">
+                          Stock
+                        </label>
+
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.stock}
+                          onChange={(event) =>
+                            updateItem(
+                              index,
+                              "stock",
+                              event.target.value
+                            )
+                          }
+                          placeholder="20"
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C9A227]"
+                        />
+                      </div>
+
+                      {/* SKU */}
+
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold text-gray-600">
+                          SKU
+                        </label>
+
+                        <input
+                          type="text"
+                          value={item.sku}
+                          onChange={(event) =>
+                            updateItem(
+                              index,
+                              "sku",
+                              event.target.value
+                            )
+                          }
+                          placeholder="KURTI-BLK-M"
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C9A227]"
+                        />
+                      </div>
+
+                      {/* BARCODE */}
+
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold text-gray-600">
+                          Barcode
+                        </label>
+
+                        <input
+                          type="text"
+                          value={item.barcode}
+                          onChange={(event) =>
+                            updateItem(
+                              index,
+                              "barcode",
+                              event.target.value
+                            )
+                          }
+                          placeholder="890123456789"
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C9A227]"
+                        />
+                      </div>
+
+                    </div>
+
+                    {/* =================================================
+                        VARIANT MEDIA
+                    ================================================= */}
+
+                    <div className="mt-6 border-t border-gray-200 pt-5">
+
+                      <div className="mb-4">
+
+                        <h4 className="text-xs font-bold uppercase tracking-wide text-[#0B1F3A]">
+                          Variant Images
+                        </h4>
+
+                        <p className="mt-1 text-[11px] text-gray-500">
+                          These images are shown only when this
+                          Colour/Size variant is selected.
+                        </p>
+
+                      </div>
+
+                      <MediaLibrary
+                        selectedMedia={item.images.map(
+                          (image, imageIndex) => ({
+                            id:
+                              image.publicId ||
+                              `${index}-${imageIndex}-${image.url}`,
+                            mediaType:
+                              image.type || "image",
+                            url: image.url,
+                            publicId:
+                              image.publicId ||
+                              undefined,
+                          })
+                        )}
+                        onSelect={(media) =>
+                          addVariantMedia(
+                            index,
+                            media
+                          )
+                        }
+                      />
+
+                      {/* SELECTED VARIANT IMAGES */}
+
+                      {item.images.length > 0 && (
+                        <div className="mt-4">
+
+                          <p className="mb-3 text-xs font-semibold text-gray-600">
+                            Selected Variant Images
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+
+                            {item.images.map(
+                              (image, imageIndex) => (
+                                <div
+                                  key={`${image.url}-${imageIndex}`}
+                                  className="relative overflow-hidden rounded-lg border border-gray-200 bg-white"
+                                >
+
+                                  <img
+                                    src={image.url}
+                                    alt="Variant"
+                                    className="h-24 w-full object-cover"
+                                  />
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      removeVariantMedia(
+                                        index,
+                                        image.url
+                                      )
+                                    }
+                                    className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-1 text-[10px] font-bold text-white"
+                                  >
+                                    ×
+                                  </button>
+
+                                </div>
+                              )
+                            )}
+
+                          </div>
+
+                        </div>
+                      )}
+
+                    </div>
+
+                  </div>
+
+                )
               )}
 
             </div>
@@ -1600,44 +1964,7 @@ const activeBrands =
           </div>
 
           {/* =================================================
-              COLOUR IMAGES
-          ================================================= */}
-
-          <div className="mb-8 border-t border-gray-100 pt-8">
-
-            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-[#172033]">
-              Colour-specific Images
-            </h3>
-
-            <p className="mb-4 text-xs text-gray-500">
-
-              Optional. Use this format:
-
-              <br />
-
-              <span className="font-medium text-gray-700">
-                Black=https://image-url.com/black.jpg,
-                White=https://image-url.com/white.jpg
-              </span>
-
-            </p>
-
-            <textarea
-              rows={4}
-              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
-              placeholder="Black=https://..., White=https://..."
-              value={colourImages}
-              onChange={(e) =>
-                setColourImages(
-                  e.target.value
-                )
-              }
-            />
-
-          </div>
-
-          {/* =================================================
-              ACTIONS
+              FORM BUTTONS
           ================================================= */}
 
           <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end">
@@ -1646,7 +1973,7 @@ const activeBrands =
               <button
                 type="button"
                 onClick={resetForm}
-                className="rounded-lg border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -1654,11 +1981,14 @@ const activeBrands =
 
             <button
               type="submit"
-              className="rounded-lg bg-[#0B1F3A] px-7 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#102f56]"
+              disabled={creating || updating}
+              className="rounded-lg bg-[#0B1F3A] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#17365f] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {editingId
+              {creating || updating
+                ? "Saving..."
+                : editingId
                 ? "Update Product"
-                : "Add Product"}
+                : "Create Product"}
             </button>
 
           </div>
@@ -1667,41 +1997,53 @@ const activeBrands =
 
       </div>
 
-      {/* ===================================================
+      {/* =================================================
           PRODUCT LIST
-      =================================================== */}
+      ================================================= */}
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
 
-        <div className="border-b border-gray-100 px-5 py-5 sm:px-6">
+        {/* LIST HEADER */}
 
-          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <div className="border-b border-gray-100 p-5 sm:p-6">
+
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
             <div>
 
-              <h2 className="text-lg font-bold text-[#172033]">
+              <h2 className="text-lg font-bold text-[#0B1F3A]">
                 Product Catalogue
               </h2>
 
               <p className="mt-1 text-xs text-gray-500">
-                Manage your current products.
+                View and manage your products.
               </p>
 
             </div>
 
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-              {products.length} products
-            </span>
+            <div className="w-full lg:w-80">
+
+              <input
+                type="text"
+                value={search}
+                onChange={(event) =>
+                  setSearch(
+                    event.target.value
+                  )
+                }
+                placeholder="Search products..."
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20"
+              />
+
+            </div>
 
           </div>
 
         </div>
 
-        {/* =================================================
-            EMPTY STATE
-        ================================================= */}
+        {/* PRODUCT CARDS */}
 
-        {products.length === 0 ? (
+        {filteredProducts.length === 0 ? (
 
           <div className="p-12 text-center">
 
@@ -1710,53 +2052,60 @@ const activeBrands =
             </p>
 
             <p className="mt-1 text-sm text-gray-400">
-              Add your first product using the form above.
+              {search
+                ? "Try another search."
+                : "Create your first product above."}
             </p>
 
           </div>
 
         ) : (
 
-          <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3 sm:p-6">
+          <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
 
-            {products.map(
+            {filteredProducts.map(
               (product) => {
 
-                const isLowStock =
-                  product.stock !== undefined &&
-                  product.stock > 0 &&
-                  product.stock <= 5;
+                const firstImage =
+                  product.mainMedia?.[0]?.url ||
+                  product.images?.[0]?.url ||
+                  "";
 
-                const isOutOfStock =
-                  product.stock === 0;
+                const variants =
+                  product.items || [];
+
+                const stock =
+                  variants.reduce(
+                    (total, item) =>
+                      total +
+                      Number(
+                        item.stock || 0
+                      ),
+                    0
+                  );
 
                 return (
-
                   <div
                     key={product.id}
-                    className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition hover:-translate-y-0.5 hover:border-[#C9A227]/50 hover:shadow-md"
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-white transition hover:border-[#C9A227]/50 hover:shadow-md"
                   >
 
                     {/* IMAGE */}
 
-                    <div className="relative h-56 overflow-hidden bg-gray-100">
+                    <div className="relative h-60 overflow-hidden bg-gray-100">
 
-                      {product.image ? (
+                      {firstImage ? (
 
                         <img
-                          src={product.image}
+                          src={firstImage}
                           alt={product.name}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                          onError={(e) => {
-                            e.currentTarget.style.display =
-                              "none";
-                          }}
+                          className="h-full w-full object-cover"
                         />
 
                       ) : (
 
                         <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                          No image
+                          No Image
                         </div>
 
                       )}
@@ -1766,200 +2115,178 @@ const activeBrands =
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-semibold ${
                             product.status ===
-                            "active"
+                              "active" ||
+                            product.status ===
+                              "published"
                               ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-600"
+                              : product.status ===
+                                "trash"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {product.status ===
-                          "active"
-                            ? "Active"
-                            : "Inactive"}
+                          {product.status ||
+                            "draft"}
                         </span>
 
                       </div>
 
                     </div>
 
-                    {/* DETAILS */}
+                    {/* CONTENT */}
 
                     <div className="p-5">
 
-                      <div className="flex items-start justify-between gap-3">
+                      <h3 className="truncate text-base font-bold text-[#0B1F3A]">
+                        {product.name}
+                      </h3>
 
-                        <div className="min-w-0">
-
-                          <h3 className="truncate text-base font-bold text-[#172033]">
-                            {product.name}
-                          </h3>
-
-                          <p className="mt-1 text-xs text-gray-500">
-                            {product.category ||
-                              "Uncategorized"}
-                          </p>
-
-                          {product.brand && (
-                            <p className="mt-1 text-xs font-medium text-[#9B7A12]">
-                              Brand: {product.brand.name}
-                            </p>
-                          )}
-
-                        </div>
-
-                        <p className="shrink-0 text-base font-bold text-[#0B1F3A]">
-                          ₹{product.price}
+                      {product.subTitle && (
+                        <p className="mt-1 truncate text-xs text-gray-500">
+                          {product.subTitle}
                         </p>
+                      )}
+
+                      {/* CATEGORY / BRAND */}
+
+                      <div className="mt-2 flex flex-wrap gap-2">
+
+                        {product.categories?.map(
+                          (item) => (
+                            <span
+                              key={item}
+                              className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-medium text-gray-600"
+                            >
+                              {item}
+                            </span>
+                          )
+                        )}
+
+                        {product.brand && (
+                          <span className="rounded-full bg-[#C9A227]/10 px-2.5 py-1 text-[10px] font-semibold text-[#92720B]">
+                            {product.brand.name}
+                          </span>
+                        )}
 
                       </div>
 
-                      {/* STOCK */}
+                      {/* VARIANT SUMMARY */}
 
-                      <div className="mt-4 flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                      <div className="mt-4 rounded-lg bg-gray-50 p-3">
+
+                        <div className="mb-3 flex items-center justify-between">
+
+                          <span className="text-xs font-semibold text-gray-500">
+                            Variants
+                          </span>
+
+                          <span className="text-xs font-bold text-[#0B1F3A]">
+                            {variants.length}
+                          </span>
+
+                        </div>
+
+                        <div className="space-y-2">
+
+                          {variants
+                            .slice(0, 4)
+                            .map(
+                              (
+                                item,
+                                index
+                              ) => (
+
+                                <div
+                                  key={
+                                    item.id ||
+                                    index
+                                  }
+                                  className="flex items-center justify-between rounded-md bg-white px-3 py-2"
+                                >
+
+                                  <div>
+
+                                    <p className="text-xs font-semibold text-gray-700">
+                                      {item.colour ||
+                                        "No colour"}{" "}
+                                      /{" "}
+                                      {item.size ||
+                                        "No size"}
+                                    </p>
+
+                                    <p className="mt-0.5 text-[10px] text-gray-400">
+                                      SKU:{" "}
+                                      {item.sku ||
+                                        "-"}
+                                    </p>
+
+                                  </div>
+
+                                  <div className="text-right">
+
+                                    <p className="text-xs font-bold text-[#0B1F3A]">
+                                      ₹
+                                      {item.price ??
+                                        0}
+                                    </p>
+
+                                    <p className="text-[10px] text-gray-400">
+                                      Stock:{" "}
+                                      {item.stock ??
+                                        0}
+                                    </p>
+
+                                  </div>
+
+                                </div>
+
+                              )
+                            )}
+
+                        </div>
+
+                        {variants.length > 4 && (
+                          <p className="mt-2 text-center text-[10px] text-gray-400">
+                            +
+                            {variants.length -
+                              4}{" "}
+                            more variants
+                          </p>
+                        )}
+
+                      </div>
+
+                      {/* INVENTORY */}
+
+                      <div className="mt-3 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2">
 
                         <span className="text-xs font-medium text-gray-500">
-                          Inventory
+                          Total Stock
                         </span>
 
                         <span
                           className={`text-xs font-bold ${
-                            isOutOfStock
+                            stock === 0
                               ? "text-red-600"
-                              : isLowStock
+                              : stock <= 5
                               ? "text-orange-500"
                               : "text-green-600"
                           }`}
                         >
-                          {isOutOfStock
-                            ? "Out of stock"
-                            : `${product.stock ?? 0} units`}
+                          {stock} units
                         </span>
 
                       </div>
 
-                      {/* SIZES */}
+                      {/* SIZE CHART */}
 
-                      <div className="mt-4">
-
-                        <p className="mb-2 text-xs font-semibold text-gray-500">
-                          Sizes
+                      {product.sizeChart && (
+                        <p className="mt-3 text-xs text-gray-500">
+                          Size Chart:{" "}
+                          <span className="font-semibold text-gray-700">
+                            {product.sizeChart.name}
+                          </span>
                         </p>
-
-                        <div className="flex flex-wrap gap-1.5">
-
-                          {product.sizes?.length ? (
-
-                            product.sizes.map(
-                              (size) => (
-
-                                <span
-                                  key={size}
-                                  className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600"
-                                >
-                                  {size}
-                                </span>
-
-                              )
-                            )
-
-                          ) : (
-
-                            <span className="text-xs text-gray-400">
-                              No sizes
-                            </span>
-
-                          )}
-
-                        </div>
-
-                      </div>
-
-                      {/* COLOURS */}
-
-                      <div className="mt-4">
-
-                        <p className="mb-2 text-xs font-semibold text-gray-500">
-                          Colours
-                        </p>
-
-                        <div className="flex flex-wrap gap-1.5">
-
-                          {product.colours?.length ? (
-
-                            product.colours.map(
-                              (colour) => (
-
-                                <span
-                                  key={colour}
-                                  className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600"
-                                >
-                                  {colour}
-                                </span>
-
-                              )
-                            )
-
-                          ) : (
-
-                            <span className="text-xs text-gray-400">
-                              No colours
-                            </span>
-
-                          )}
-
-                        </div>
-
-                      </div>
-
-                      {/* PRODUCT VIEWS STATUS */}
-
-                      <div className="mt-4 rounded-lg bg-blue-50 px-3 py-2">
-
-                        <div className="flex items-center justify-between gap-2">
-
-                          <span className="text-xs font-semibold text-gray-500">
-                            Product Views
-                          </span>
-
-                          <span className="text-xs font-semibold text-blue-700">
-                            {product.productImages?.length || 0}
-                            {" "}
-                            image
-                            {(product.productImages?.length || 0) !== 1
-                              ? "s"
-                              : ""}
-                          </span>
-
-                        </div>
-
-                      </div>
-
-                      {/* SIZE GUIDE */}
-
-                      <div className="mt-4 rounded-lg bg-[#C9A227]/5 px-3 py-2">
-
-                        <div className="flex items-center justify-between gap-2">
-
-                          <span className="text-xs font-semibold text-gray-500">
-                            Size Guide
-                          </span>
-
-                          <span className="text-xs font-semibold text-[#9B7A12]">
-                            {product.sizechart?.name ||
-                              "Not assigned"}
-                          </span>
-
-                        </div>
-
-                      </div>
-
-                      {/* DESCRIPTION */}
-
-                      {product.description && (
-
-                        <p className="mt-4 line-clamp-2 text-xs leading-5 text-gray-500">
-                          {product.description}
-                        </p>
-
                       )}
 
                       {/* ACTIONS */}
@@ -1969,23 +2296,13 @@ const activeBrands =
                         <button
                           type="button"
                           onClick={() =>
-                            handleEdit(product)
-                          }
-                          className="flex-1 rounded-lg border border-[#0B1F3A] px-3 py-2.5 text-xs font-semibold text-[#0B1F3A] transition hover:bg-[#0B1F3A] hover:text-white"
-                        >
-                          Edit Product
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDelete(
-                              product.id
+                            handleEdit(
+                              product
                             )
                           }
-                          className="rounded-lg border border-red-200 px-3 py-2.5 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                          className="w-full rounded-lg border border-[#0B1F3A] px-3 py-2.5 text-xs font-semibold text-[#0B1F3A] transition hover:bg-[#0B1F3A] hover:text-white"
                         >
-                          Delete
+                          Edit
                         </button>
 
                       </div>
@@ -1993,7 +2310,6 @@ const activeBrands =
                     </div>
 
                   </div>
-
                 );
               }
             )}
@@ -2002,19 +2318,16 @@ const activeBrands =
 
         )}
 
-        {/* =================================================
-            LOAD MORE
-        ================================================= */}
+        {/* LOAD MORE */}
 
-        {data?.products.hasMore && (
-
+        {data?.products?.hasMore && (
           <div className="border-t border-gray-100 p-6 text-center">
 
             <button
               type="button"
               onClick={handleLoadMore}
               disabled={loading}
-              className="rounded-lg bg-[#0B1F3A] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#102f56] disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-[#0B1F3A] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#17365f] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading
                 ? "Loading..."
@@ -2022,24 +2335,19 @@ const activeBrands =
             </button>
 
           </div>
-
         )}
 
-        {/* =================================================
-            END MESSAGE
-        ================================================= */}
+        {/* END */}
 
-        {!data?.products.hasMore &&
+        {!data?.products?.hasMore &&
           products.length > 0 && (
-
             <div className="border-t border-gray-100 px-6 py-5 text-center">
 
               <p className="text-xs text-gray-400">
-                You have reached the end of your product catalogue.
+                End of product catalogue.
               </p>
 
             </div>
-
           )}
 
       </div>
@@ -2047,4 +2355,3 @@ const activeBrands =
     </div>
   );
 }
-

@@ -75,9 +75,9 @@ export default function Colours() {
     colours: Colour[];
   }>(COLOURS_QUERY);
 
-  const [createColour] = useMutation(CREATE_COLOUR);
-  const [updateColour] = useMutation(UPDATE_COLOUR);
-  const [deleteColour] = useMutation(DELETE_COLOUR);
+  const [createColour] = useMutation<any>(CREATE_COLOUR);
+  const [updateColour] = useMutation<any>(UPDATE_COLOUR);
+  const [deleteColour] = useMutation<any>(DELETE_COLOUR);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");

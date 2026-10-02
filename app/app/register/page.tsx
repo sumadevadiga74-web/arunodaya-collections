@@ -44,7 +44,7 @@ type AuthUser = {
 export default function RegisterPage() {
   const router = useRouter();
 
-  const [register, { loading }] = useMutation(REGISTER);
+  const [register, { loading }] = useMutation<any>(REGISTER);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

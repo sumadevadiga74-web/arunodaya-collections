@@ -84,9 +84,9 @@ export default function Contests() {
     contests: Contest[];
   }>(CONTESTS_QUERY);
 
-  const [createContest] = useMutation(CREATE_CONTEST);
-  const [updateContest] = useMutation(UPDATE_CONTEST);
-  const [deleteContest] = useMutation(DELETE_CONTEST);
+  const [createContest] = useMutation<any>(CREATE_CONTEST);
+  const [updateContest] = useMutation<any>(UPDATE_CONTEST);
+  const [deleteContest] = useMutation<any>(DELETE_CONTEST);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 

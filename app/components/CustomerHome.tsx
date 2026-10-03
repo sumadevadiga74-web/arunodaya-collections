@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
@@ -8,7 +8,9 @@ import Header from "./Header/Header";
 
 /* =========================================================
    PRODUCTS
-========================================================= */const PRODUCTS_QUERY = gql`
+========================================================= */
+
+const PRODUCTS_QUERY = gql`
   query Products($page: Int!, $limit: Int!) {
     products(page: $page, limit: $limit) {
       products {
@@ -18,25 +20,30 @@ import Header from "./Header/Header";
         subTitle
         description
         categories
+
         brand {
           id
           name
         }
+
         mainMedia {
           type
           url
           publicId
         }
+
         images {
           type
           url
           publicId
         }
+
         items {
           price
           stock
           size
           colour
+
           images {
             type
             url
@@ -88,7 +95,9 @@ type ProductMedia = {
   type?: string | null;
   url?: string | null;
   publicId?: string | null;
-};type ProductBrand = {
+};
+
+type ProductBrand = {
   id: string;
   name: string;
 };
@@ -108,10 +117,12 @@ type Product = {
   subTitle?: string | null;
   description?: string | null;
 
- categories?: string[];
+  categories?: string[];
+
   brand?: ProductBrand | null;
 
-  mainMedia?: ProductMedia | null;
+  mainMedia?: ProductMedia[];
+
   images?: ProductMedia[];
 
   items?: ProductItem[];
@@ -214,26 +225,39 @@ const categories = [
 ========================================================= */
 
 function formatPrice(price: number) {
-  return `?${Number(price || 0).toLocaleString("en-IN")}`;
+  return `&#8377;${Number(price || 0).toLocaleString("en-IN")}`;
 }
 
 function getProductImage(product: Product) {
-  if (product.mainMedia?.url) {
-    return product.mainMedia.url;
+  // 1. Product main media
+  const mainImage = product.mainMedia?.find(
+    (image) =>
+      image.type !== "video" &&
+      !!image.url
+  );
+
+  if (mainImage?.url) {
+    return mainImage.url;
   }
 
+  // 2. Product global images
   const globalImage = product.images?.find(
-    (image) => image.type !== "video" && image.url
+    (image) =>
+      image.type !== "video" &&
+      !!image.url
   );
 
   if (globalImage?.url) {
     return globalImage.url;
   }
 
+  // 3. Variant images
   const variantImage = product.items
     ?.flatMap((item) => item.images || [])
     .find(
-      (image) => image.type !== "video" && image.url
+      (image) =>
+        image.type !== "video" &&
+        !!image.url
     );
 
   return variantImage?.url || "";
@@ -246,20 +270,26 @@ function getProductPrice(product: Product) {
 }
 
 function getProductMrp(product: Product) {
-  return 0;
+  const firstItem = product.items?.[0];
+
+  return Number(firstItem?.price ?? 0);
 }
 
 function getProductStock(product: Product) {
   return (
     product.items?.reduce(
-      (total, item) => total + Number(item.stock || 0),
+      (total, item) =>
+        total + Number(item.stock || 0),
       0
     ) ?? 0
   );
 }
 
 function getProductCategory(product: Product) {
-  return product.categories?.[0] || "Clothing";
+  return (
+    product.categories?.[0] ||
+    "Clothing"
+  );
 }
 
 /* =========================================================
@@ -293,9 +323,12 @@ export default function CustomerHome() {
     const ids =
       wishlistData?.wishlists
         ?.filter(
-          (item) => item.status !== "inactive"
+          (item) =>
+            item.status !== "inactive"
         )
-        .map((item) => item.productId) ?? [];
+        .map(
+          (item) => item.productId
+        ) ?? [];
 
     setWishlistProducts(ids);
   }, [wishlistData]);
@@ -323,8 +356,10 @@ export default function CustomerHome() {
   const allProducts =
     data?.products?.products ?? [];
 
-  /* Only published products should appear on the
-     customer-facing Home page. */
+  /*
+    Only published products should appear
+    on the customer-facing Home page.
+  */
   const products = allProducts
     .filter(
       (product) =>
@@ -370,11 +405,14 @@ export default function CustomerHome() {
           return current;
         }
 
-        return [...current, productId];
+        return [
+          ...current,
+          productId,
+        ];
       });
 
       alert(
-        "Product added to your wishlist ??"
+        "Product added to your wishlist ❤️"
       );
     } catch (error: any) {
       console.error(
@@ -388,6 +426,10 @@ export default function CustomerHome() {
       );
     }
   };
+
+  /* =======================================================
+     RETURN
+  ======================================================= */
 
   return (
     <main className="min-h-screen bg-white text-[#172033]">
@@ -407,8 +449,9 @@ export default function CustomerHome() {
 
           <div className="grid gap-4 lg:grid-cols-2">
 
-            {banners.slice(0, 2).map(
-              (banner) => (
+            {banners
+              .slice(0, 2)
+              .map((banner) => (
                 <div
                   key={banner.title}
                   className="group relative h-[390px] overflow-hidden rounded-2xl bg-[#0B1F3A] sm:h-[450px]"
@@ -441,16 +484,16 @@ export default function CustomerHome() {
                         className="mt-7 inline-flex rounded-full bg-[#C9A227] px-6 py-3 text-sm font-bold text-[#0B1F3A] transition hover:bg-[#e0bb38]"
                       >
                         {banner.button}
+
                         <span className="ml-2">
-                          ?
+                          →
                         </span>
                       </Link>
 
                     </div>
                   </div>
                 </div>
-              )
-            )}
+              ))}
 
           </div>
 
@@ -458,8 +501,9 @@ export default function CustomerHome() {
 
           <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
 
-            {banners.slice(2).map(
-              (banner) => (
+            {banners
+              .slice(2)
+              .map((banner) => (
                 <Link
                   key={banner.title}
                   href={banner.link}
@@ -484,13 +528,12 @@ export default function CustomerHome() {
                     </p>
 
                     <span className="mt-2 inline-block text-xs font-bold text-white">
-                      {banner.button} ?
+                      {banner.button} →
                     </span>
 
                   </div>
                 </Link>
-              )
-            )}
+              ))}
 
           </div>
 
@@ -547,7 +590,7 @@ export default function CustomerHome() {
               </h3>
 
               <p className="mt-1 text-xs font-bold text-[#C9A227]">
-                Shop Now ?
+               Shop Now <span aria-hidden="true">&rarr;</span>
               </p>
 
             </Link>
@@ -588,7 +631,7 @@ export default function CustomerHome() {
               href="/shop"
               className="hidden text-sm font-bold text-[#0B1F3A] transition hover:text-[#C9A227] sm:block"
             >
-              View All ?
+            View All <span aria-hidden="true">&rarr;</span>
             </Link>
 
           </div>
@@ -604,6 +647,7 @@ export default function CustomerHome() {
                     key={item}
                     className="overflow-hidden rounded-xl bg-white"
                   >
+
                     <div className="aspect-[4/5] animate-pulse bg-[#e9ebef]" />
 
                     <div className="space-y-3 p-4">
@@ -663,9 +707,7 @@ export default function CustomerHome() {
                     getProductStock(product);
 
                   const category =
-                    getProductCategory(
-                      product
-                    );
+                    getProductCategory(product);
 
                   return (
                     <article
@@ -714,9 +756,7 @@ export default function CustomerHome() {
                             event.preventDefault();
                             event.stopPropagation();
 
-                            if (
-                              !isWishlisted
-                            ) {
+                            if (!isWishlisted) {
                               handleAddToWishlist(
                                 product.id
                               );
@@ -729,8 +769,8 @@ export default function CustomerHome() {
                           }`}
                         >
                           {isWishlisted
-                            ? "?"
-                            : "?"}
+                            ? "♥"
+                            : "♡"}
                         </button>
 
                       </div>
@@ -746,9 +786,11 @@ export default function CustomerHome() {
                         <Link
                           href={`/product/${product.id}`}
                         >
+
                           <h3 className="line-clamp-2 min-h-[44px] font-medium text-[#0B1F3A] hover:text-[#C9A227]">
                             {product.name}
                           </h3>
+
                         </Link>
 
                         <p className="mt-2 line-clamp-1 text-xs text-[#172033]/50">
@@ -768,9 +810,7 @@ export default function CustomerHome() {
                           {mrp > price &&
                             mrp > 0 && (
                               <span className="text-xs text-[#172033]/40 line-through">
-                                {formatPrice(
-                                  mrp
-                                )}
+                                {formatPrice(mrp)}
                               </span>
                             )}
 
@@ -787,8 +827,7 @@ export default function CustomerHome() {
                           </span>
 
                           <span>
-                            {product.brand
-                              ?.name ||
+                            {product.brand?.name ||
                               "Arunodaya"}
                           </span>
 
@@ -826,7 +865,7 @@ export default function CustomerHome() {
             href="/shop"
             className="mx-auto mt-8 flex w-fit rounded-full border border-[#0B1F3A]/20 px-6 py-3 text-sm font-bold text-[#0B1F3A] sm:hidden"
           >
-            View All Products ?
+            View All Products →
           </Link>
 
         </div>
@@ -870,7 +909,7 @@ export default function CustomerHome() {
               Shop Clothing
 
               <span className="ml-2">
-                ?
+                →
               </span>
             </Link>
 
@@ -909,7 +948,7 @@ export default function CustomerHome() {
             <div className="text-center">
 
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#0B1F3A] text-xl text-[#C9A227]">
-                ?
+                ★
               </div>
 
               <h3 className="mt-4 font-semibold text-[#0B1F3A]">
@@ -925,7 +964,7 @@ export default function CustomerHome() {
             <div className="text-center">
 
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#0B1F3A] text-xl text-[#C9A227]">
-                ??
+                🚚
               </div>
 
               <h3 className="mt-4 font-semibold text-[#0B1F3A]">
@@ -941,7 +980,7 @@ export default function CustomerHome() {
             <div className="text-center">
 
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#0B1F3A] text-xl text-[#C9A227]">
-                ?
+                ↻
               </div>
 
               <h3 className="mt-4 font-semibold text-[#0B1F3A]">
@@ -957,7 +996,7 @@ export default function CustomerHome() {
             <div className="text-center">
 
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#0B1F3A] text-xl text-[#C9A227]">
-                ?
+                ✓
               </div>
 
               <h3 className="mt-4 font-semibold text-[#0B1F3A]">

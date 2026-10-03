@@ -577,20 +577,31 @@ export default function ProductPage() {
      Global images show initially.
      Once a variant is selected, only variant images show.
   ======================================================= */
+const allImages = useMemo(() => {
+  // 1. Once a variant is selected, show only that variant's images.
+  if (selectedVariant && variantImages.length > 0) {
+    return variantImages;
+  }
 
-  const allImages = useMemo(() => {
-    if (selectedVariant && variantImages.length > 0) {
-      return variantImages;
-    }
+  // 2. On initial load, prefer product-level/global images.
+  if (globalImages.length > 0) {
+    return globalImages;
+  }
 
-    return globalImages.length
-      ? globalImages
-      : ["/placeholder.png"];
-  }, [
-    selectedVariant,
-    variantImages,
-    globalImages,
-  ]);
+  // 3. If there are no global images, use the first available
+  //    variant image so the product is not blank on initial load.
+  const firstVariantImages = variants
+    .flatMap((item) => item.images || [])
+    .map((item) => getImage(item.url))
+    .filter(Boolean);
+
+  return Array.from(new Set(firstVariantImages));
+}, [
+  selectedVariant,
+  variantImages,
+  globalImages,
+  variants,
+]);
 
   /* =======================================================
      KEEP SELECTED IMAGE VALID

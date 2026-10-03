@@ -225,7 +225,7 @@ const categories = [
 ========================================================= */
 
 function formatPrice(price: number) {
-  return `&#8377;${Number(price || 0).toLocaleString("en-IN")}`;
+  return `₹${Number(price || 0).toLocaleString("en-IN")}`;
 }
 
 function getProductImage(product: Product) {

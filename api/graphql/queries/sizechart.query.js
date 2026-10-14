@@ -12,6 +12,8 @@ export const sizechartTypeDefs = `#graphql
   }
 
   extend type Query {
+    sizecharts: [Sizechart!]!
+
     sizechartById(id: ID!): Sizechart
     sizechartMany: [Sizechart!]!
     sizechartOne: Sizechart
@@ -25,6 +27,10 @@ export const sizechartTypeDefs = `#graphql
 
 export const sizechartResolvers = {
   Query: {
+    sizecharts: async () => {
+      return await Sizechart.find();
+    },
+
     sizechartById: async (_, { id }) => {
       return await Sizechart.findById(id);
     },

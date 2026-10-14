@@ -1923,12 +1923,14 @@ items: cleanProductItems,
                                   key={`${image.url}-${imageIndex}`}
                                   className="relative overflow-hidden rounded-lg border border-gray-200 bg-white"
                                 >
-
-                                  <img
-                                    src={image.url}
-                                    alt="Variant"
-                                    className="h-24 w-full object-cover"
-                                  />
+<img
+  src={image.url}
+  alt={`Variant image ${imageIndex + 1}`}
+  className="h-24 w-full object-cover"
+  onError={(event) => {
+    event.currentTarget.style.display = "none";
+  }}
+/>
 
                                   <button
                                     type="button"

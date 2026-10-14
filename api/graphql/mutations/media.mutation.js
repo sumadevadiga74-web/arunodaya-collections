@@ -1,4 +1,3 @@
-
 import Media from "../../models/Media.js";
 
 export const mediaMutationTypeDefs = `#graphql
@@ -12,6 +11,8 @@ export const mediaMutationTypeDefs = `#graphql
       altText: String
       folder: String
     ): Media!
+
+    deleteMedia(id: ID!): Boolean!
   }
 `;
 
@@ -38,6 +39,18 @@ export const mediaMutationResolvers = {
       });
 
       return media;
+    },
+
+    deleteMedia: async (_, { id }) => {
+      const media = await Media.findById(id);
+
+      if (!media) {
+        return false;
+      }
+
+      await Media.findByIdAndDelete(id);
+
+      return true;
     },
   },
 };

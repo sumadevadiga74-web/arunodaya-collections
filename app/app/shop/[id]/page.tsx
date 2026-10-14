@@ -19,16 +19,31 @@ const PRODUCT_QUERY = gql`
       price
       image
       category
+      description
+      stock
+      sizes
+      colours
 
       brand {
         id
         name
       }
 
-      description
-      stock
-      sizes
-      colours
+      items {
+        id
+        price
+        stock
+
+        size {
+          id
+          name
+        }
+
+        colour {
+          id
+          name
+        }
+      }
 
       colourImages {
         colour
@@ -135,22 +150,51 @@ type ColourImage = {
   image: string;
 };
 
+type ProductItem = {
+  id: string;
+  price?: number;
+  stock?: number;
+
+  size?:
+    | string
+    | {
+        id?: string;
+        name?: string;
+      }
+    | null;
+
+  colour?:
+    | string
+    | {
+        id?: string;
+        name?: string;
+      }
+    | null;
+};
+
 type Product = {
   id: string;
   name: string;
   price: number;
   image: string;
   category?: string;
+
   brand?: {
     id: string;
     name: string;
   } | null;
+
   description?: string;
   stock: number;
+
   sizes?: string[];
   colours?: string[];
+
+  items?: ProductItem[];
+
   colourImages?: ColourImage[];
   productImages?: ProductImage[];
+
   sizechart?: string;
   status?: string;
 };
@@ -280,22 +324,12 @@ const getColourValue = (colourName: string) => {
     return colourMap[name];
   }
 
-  /*
-    If admin has entered an actual CSS colour or hex value,
-    allow it to work too.
-  */
-
   if (
     /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(name) ||
     /^(rgb|rgba|hsl|hsla)\(/i.test(name)
   ) {
     return name;
   }
-
-  /*
-    Unknown colour fallback.
-    This prevents the circle from becoming invisible.
-  */
 
   return "#D9D9D9";
 };
@@ -314,11 +348,9 @@ const getColourCircleBorder = (colourName: string) => {
     "silver",
   ];
 
-  if (lightColours.includes(name)) {
-    return "#B8B8B8";
-  }
-
-  return "#D1D5DB";
+  return lightColours.includes(name)
+    ? "#B8B8B8"
+    : "#D1D5DB";
 };
 
 const isLightColour = (colourName: string) => {
@@ -364,7 +396,6 @@ export default function ProductDetailsPage() {
     useState(false);
 
   const [selectedImage, setSelectedImage] = useState("");
-
   const [showSizeChart, setShowSizeChart] = useState(false);
 
   /* =======================================================
@@ -402,9 +433,11 @@ export default function ProductDetailsPage() {
      MUTATIONS
   ======================================================= */
 
-  const [createBasket] = useMutation<any>(CREATE_BASKET);
+  const [createBasket] =
+    useMutation<any>(CREATE_BASKET);
 
-  const [addWishlist] = useMutation<any>(ADD_WISHLIST);
+  const [addWishlist] =
+    useMutation<any>(ADD_WISHLIST);
 
   /* =======================================================
      PRODUCT DATA
@@ -429,37 +462,52 @@ export default function ProductDetailsPage() {
 
   /* =======================================================
      COLOUR OPTIONS
-     
-     IMPORTANT:
-     - 0 colours = no colour required
-     - 1 colour = automatically selected
-     - 2+ colours = customer must select
   ======================================================= */
 
-  const colourOptions = product?.colours ?? [];
+  const uniqueColourOptions = useMemo(() => {
+    const colours = product?.colours ?? [];
 
-  const hasColours = colourOptions.length > 0;
+    return Array.from(
+      new Map(
+        colours
+          .map((colour) => colour.trim())
+          .filter(Boolean)
+          .map((colour) => [
+            normalizeColour(colour),
+            colour,
+          ])
+      ).values()
+    );
+  }, [product?.colours]);
 
   const hasMultipleColours =
-    colourOptions.length > 1;
+    uniqueColourOptions.length > 1;
 
   /*
-    This is the most important part.
-
-    If there is exactly ONE colour, we use that colour
-    even if React state has not updated yet.
-
-    Therefore the customer never gets:
-    "Please select a colour."
+    If there is only one colour, it is automatically used.
+    Customer does NOT need to select it.
   */
 
   const effectiveSelectedColour =
-    colourOptions.length === 1
-      ? colourOptions[0]
+    uniqueColourOptions.length === 1
+      ? uniqueColourOptions[0]
       : selectedColour.trim();
 
   /* =======================================================
-     AUTO SELECT COLOUR
+     PRODUCT STATUS
+  ======================================================= */
+
+  const productStatus =
+    String(product?.status ?? "")
+      .trim()
+      .toLowerCase();
+
+  const isProductActive =
+    productStatus === "active" ||
+    productStatus === "published";
+
+  /* =======================================================
+     AUTO SELECT SINGLE COLOUR
   ======================================================= */
 
   useEffect(() => {
@@ -467,20 +515,13 @@ export default function ProductDetailsPage() {
       return;
     }
 
-    const colours = product.colours ?? [];
-
     setSelectedSize("");
     setQuantity(1);
     setSelectedImage("");
 
-    /*
-      ONE COLOUR
-
-      Automatically select it.
-    */
-
-    if (colours.length === 1) {
-      const onlyColour = colours[0];
+    if (uniqueColourOptions.length === 1) {
+      const onlyColour =
+        uniqueColourOptions[0];
 
       setSelectedColour(onlyColour);
 
@@ -498,15 +539,63 @@ export default function ProductDetailsPage() {
       return;
     }
 
-    /*
-      MULTIPLE COLOURS
-
-      Do not automatically choose one.
-      Customer must choose.
-    */
-
     setSelectedColour("");
-  }, [product?.id]);
+  }, [product?.id, uniqueColourOptions]);
+
+  /* =======================================================
+     SELECTED ITEM / VARIANT
+  ======================================================= */
+
+  const selectedItem = useMemo(() => {
+    if (!product?.items) {
+      return undefined;
+    }
+
+    return product.items.find((item) => {
+      const itemSize =
+        typeof item.size === "string"
+          ? item.size.trim()
+          : item.size?.name?.trim() ?? "";
+
+      const itemColour =
+        typeof item.colour === "string"
+          ? item.colour.trim()
+          : item.colour?.name?.trim() ?? "";
+
+      const sizeMatches =
+        product.sizes &&
+        product.sizes.length > 0
+          ? itemSize.toLowerCase() ===
+            selectedSize.trim().toLowerCase()
+          : true;
+
+      /*
+        For ONE colour:
+        colour is ignored for matching.
+
+        For MULTIPLE colours:
+        selected colour must match.
+      */
+
+      const colourMatches =
+        uniqueColourOptions.length <= 1
+          ? true
+          : normalizeColour(itemColour) ===
+            normalizeColour(
+              effectiveSelectedColour
+            );
+
+      return sizeMatches && colourMatches;
+    });
+  }, [
+    product,
+    selectedSize,
+    effectiveSelectedColour,
+    uniqueColourOptions,
+  ]);
+
+  const availableStock =
+    selectedItem?.stock ?? 0;
 
   /* =======================================================
      ALL PRODUCT IMAGES
@@ -523,27 +612,23 @@ export default function ProductDetailsPage() {
       images.push(product.image);
     }
 
-    if (product.productImages) {
-      product.productImages.forEach((item) => {
-        if (
-          item.image &&
-          !images.includes(item.image)
-        ) {
-          images.push(item.image);
-        }
-      });
-    }
+    product.productImages?.forEach((item) => {
+      if (
+        item.image &&
+        !images.includes(item.image)
+      ) {
+        images.push(item.image);
+      }
+    });
 
-    if (product.colourImages) {
-      product.colourImages.forEach((item) => {
-        if (
-          item.image &&
-          !images.includes(item.image)
-        ) {
-          images.push(item.image);
-        }
-      });
-    }
+    product.colourImages?.forEach((item) => {
+      if (
+        item.image &&
+        !images.includes(item.image)
+      ) {
+        images.push(item.image);
+      }
+    });
 
     return images;
   }, [product]);
@@ -565,7 +650,9 @@ export default function ProductDetailsPage() {
       product.colourImages.find(
         (item) =>
           normalizeColour(item.colour) ===
-          normalizeColour(effectiveSelectedColour)
+          normalizeColour(
+            effectiveSelectedColour
+          )
       );
 
     return colourImage?.image || "";
@@ -586,8 +673,12 @@ export default function ProductDetailsPage() {
      COLOUR CHANGE
   ======================================================= */
 
-  const handleColourChange = (colour: string) => {
+  const handleColourChange = (
+    colour: string
+  ) => {
     setSelectedColour(colour);
+    setSelectedSize("");
+    setQuantity(1);
 
     const matchingImage =
       product?.colourImages?.find(
@@ -602,22 +693,33 @@ export default function ProductDetailsPage() {
   };
 
   /* =======================================================
-     RATING PERCENTAGE
+     SIZE CHANGE
   ======================================================= */
 
-  const getPercentage = (count: number) => {
+  const handleSizeChange = (
+    size: string
+  ) => {
+    setSelectedSize(size);
+    setQuantity(1);
+  };
+
+  /* =======================================================
+     RATING
+  ======================================================= */
+
+  const getPercentage = (
+    count: number
+  ) => {
     if (!productRating.totalReviews) {
       return 0;
     }
 
     return Math.round(
-      (count / productRating.totalReviews) * 100
+      (count /
+        productRating.totalReviews) *
+        100
     );
   };
-
-  /* =======================================================
-     RATING DATA
-  ======================================================= */
 
   const ratingRows = [
     {
@@ -649,7 +751,9 @@ export default function ProductDetailsPage() {
   const getAuthUser = () => {
     try {
       const storedUser =
-        localStorage.getItem("authUser");
+        localStorage.getItem(
+          "authUser"
+        );
 
       if (!storedUser) {
         return null;
@@ -677,24 +781,18 @@ export default function ProductDetailsPage() {
         "Please login to add products to your basket."
       );
 
-      router.push("/customer-login");
+      router.push(
+        "/customer-login"
+      );
+
       return;
     }
-
-    const isProductActive =
-      String(product.status ?? "")
-        .trim()
-        .toLowerCase() === "active";
 
     if (!isProductActive) {
       alert(
         "This product is currently unavailable."
       );
-      return;
-    }
 
-    if (product.stock <= 0) {
-      alert("This product is out of stock.");
       return;
     }
 
@@ -709,46 +807,60 @@ export default function ProductDetailsPage() {
     ) {
       alert("Please select a size.");
       return;
-    }
+    }/* =====================================================
+   COLOUR + VARIANT VALIDATION
+===================================================== */
 
-    /* =====================================================
-       COLOUR VALIDATION
+const basketColour =
+  uniqueColourOptions.length === 1
+    ? uniqueColourOptions[0]
+    : effectiveSelectedColour.trim();
 
-       ONE COLOUR:
-       Automatically accepted.
+const selectedItem = product.items?.find((item: any) => {
+  const itemSize =
+    typeof item.size === "string"
+      ? item.size.trim()
+      : item.size?.name?.trim() ?? "";
 
-       MULTIPLE COLOURS:
-       Customer must select one.
-    ===================================================== */
+  const itemColour =
+    typeof item.colour === "string"
+      ? item.colour.trim()
+      : item.colour?.name?.trim() ?? "";
 
-    const colourOptions = product.colours ?? [];
+  const sizeMatches =
+    !selectedSize ||
+    itemSize.toLowerCase() ===
+      selectedSize.trim().toLowerCase();
 
-    const effectiveColour =
-      colourOptions.length === 1
-        ? colourOptions[0]
-        : selectedColour.trim();
+  const colourMatches =
+    uniqueColourOptions.length <= 1
+      ? true
+      : normalizeColour(itemColour) ===
+        normalizeColour(basketColour);
 
-    if (
-      colourOptions.length > 1 &&
-      !effectiveColour
-    ) {
-      alert("Please select a colour.");
-      return;
-    }
+  return sizeMatches && colourMatches;
+});
 
-    /* =====================================================
-       STOCK VALIDATION
-    ===================================================== */
+/* =====================================================
+   STOCK VALIDATION
+===================================================== */
 
-    if (quantity > product.stock) {
-      alert(
-        `Only ${product.stock} item${
-          product.stock === 1 ? "" : "s"
-        } available.`
-      );
-      return;
-    }
+const availableStock =
+  selectedItem?.stock ?? 0;
 
+if (availableStock <= 0) {
+  alert("This variant is out of stock.");
+  return;
+}
+
+if (quantity > availableStock) {
+  alert(
+    `Only ${availableStock} item${
+      availableStock === 1 ? "" : "s"
+    } available.`
+  );
+  return;
+}
     /* =====================================================
        CREATE BASKET
     ===================================================== */
@@ -761,15 +873,11 @@ export default function ProductDetailsPage() {
           userId: authUser.id,
           productId: product.id,
           quantity,
-          size: selectedSize || null,
-
-          /*
-            IMPORTANT:
-            For one-colour products this sends the
-            automatically selected colour.
-          */
-
-          colour: effectiveColour || null,
+          size:
+            selectedSize || null,
+          colour:
+            effectiveSelectedColour ||
+            null,
         },
       });
 
@@ -790,50 +898,57 @@ export default function ProductDetailsPage() {
   };
 
   /* =======================================================
-     ADD TO WISHLIST
+     WISHLIST
   ======================================================= */
 
-  const handleAddToWishlist = async () => {
-    if (!product) {
-      return;
-    }
+  const handleAddToWishlist =
+    async () => {
+      if (!product) {
+        return;
+      }
 
-    const authUser = getAuthUser();
+      const authUser =
+        getAuthUser();
 
-    if (!authUser?.id) {
-      alert(
-        "Please login to add products to wishlist."
-      );
+      if (!authUser?.id) {
+        alert(
+          "Please login to add products to wishlist."
+        );
 
-      router.push("/customer-login");
-      return;
-    }
+        router.push(
+          "/customer-login"
+        );
 
-    try {
-      setAddingToWishlist(true);
+        return;
+      }
 
-      await addWishlist({
-        variables: {
-          userId: authUser.id,
-          productId: product.id,
-        },
-      });
+      try {
+        setAddingToWishlist(true);
 
-      alert("Product added to wishlist.");
-    } catch (error: any) {
-      console.error(
-        "ADD TO WISHLIST ERROR:",
-        error
-      );
+        await addWishlist({
+          variables: {
+            userId: authUser.id,
+            productId: product.id,
+          },
+        });
 
-      alert(
-        error?.message ||
-          "Unable to add product to wishlist."
-      );
-    } finally {
-      setAddingToWishlist(false);
-    }
-  };
+        alert(
+          "Product added to wishlist."
+        );
+      } catch (error: any) {
+        console.error(
+          "ADD TO WISHLIST ERROR:",
+          error
+        );
+
+        alert(
+          error?.message ||
+            "Unable to add product to wishlist."
+        );
+      } finally {
+        setAddingToWishlist(false);
+      }
+    };
 
   /* =======================================================
      QUANTITY
@@ -846,17 +961,20 @@ export default function ProductDetailsPage() {
   };
 
   const increaseQuantity = () => {
-    if (!product) {
+    if (availableStock <= 0) {
       return;
     }
 
     setQuantity((current) =>
-      Math.min(product.stock, current + 1)
+      Math.min(
+        availableStock,
+        current + 1
+      )
     );
   };
 
   /* =======================================================
-     FORMAT DATE
+     REVIEW DATE
   ======================================================= */
 
   const formatReviewDate = (
@@ -866,17 +984,25 @@ export default function ProductDetailsPage() {
       return "";
     }
 
-    const date = new Date(createdAt);
+    const date =
+      new Date(createdAt);
 
-    if (Number.isNaN(date.getTime())) {
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
       return "";
     }
 
-    return date.toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    return date.toLocaleDateString(
+      "en-IN",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }
+    );
   };
 
   /* =======================================================
@@ -913,7 +1039,10 @@ export default function ProductDetailsPage() {
      ERROR
   ======================================================= */
 
-  if (productError || !product) {
+  if (
+    productError ||
+    !product
+  ) {
     return (
       <>
         <Header />
@@ -941,19 +1070,24 @@ export default function ProductDetailsPage() {
               marginBottom: "25px",
             }}
           >
-            The product you are looking for is
-            unavailable.
+            The product you are looking for
+            is unavailable.
           </p>
 
           <Link
             href="/shop"
             style={{
-              display: "inline-block",
-              padding: "12px 24px",
-              background: "#C9A227",
+              display:
+                "inline-block",
+              padding:
+                "12px 24px",
+              background:
+                "#C9A227",
               color: "#fff",
-              borderRadius: "8px",
-              textDecoration: "none",
+              borderRadius:
+                "8px",
+              textDecoration:
+                "none",
               fontWeight: 700,
             }}
           >
@@ -963,11 +1097,6 @@ export default function ProductDetailsPage() {
       </>
     );
   }
-
-  const isProductActive =
-    String(product.status ?? "")
-      .trim()
-      .toLowerCase() === "active";
 
   /* =======================================================
      PAGE
@@ -991,7 +1120,8 @@ export default function ProductDetailsPage() {
           style={{
             maxWidth: "1200px",
             margin: "0 auto",
-            padding: "22px 20px 10px",
+            padding:
+              "22px 20px 10px",
             color: "#777",
             fontSize: "14px",
           }}
@@ -1000,18 +1130,25 @@ export default function ProductDetailsPage() {
             href="/shop"
             style={{
               color: "#102f56",
-              textDecoration: "none",
+              textDecoration:
+                "none",
               fontWeight: 600,
             }}
           >
             Shop
           </Link>
 
-          <span style={{ margin: "0 8px" }}>
+          <span
+            style={{
+              margin: "0 8px",
+            }}
+          >
             /
           </span>
 
-          <span>{product.name}</span>
+          <span>
+            {product.name}
+          </span>
         </div>
 
         {/* =================================================
@@ -1022,7 +1159,8 @@ export default function ProductDetailsPage() {
           style={{
             maxWidth: "1200px",
             margin: "0 auto",
-            padding: "25px 20px 60px",
+            padding:
+              "25px 20px 60px",
           }}
         >
           <div
@@ -1039,35 +1177,44 @@ export default function ProductDetailsPage() {
             ============================================== */}
 
             <div>
-              {/* Main Image */}
-
               <div
                 style={{
                   width: "100%",
                   aspectRatio: "1 / 1",
-                  background: "#F8F9FB",
-                  borderRadius: "16px",
+                  background:
+                    "#F8F9FB",
+                  borderRadius:
+                    "16px",
                   overflow: "hidden",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "1px solid #eee",
+                  alignItems:
+                    "center",
+                  justifyContent:
+                    "center",
+                  border:
+                    "1px solid #eee",
                 }}
               >
                 {displayImage ? (
                   <img
-                    src={displayImage}
-                    alt={product.name}
+                    src={
+                      displayImage
+                    }
+                    alt={
+                      product.name
+                    }
                     style={{
                       width: "100%",
                       height: "100%",
-                      objectFit: "contain",
+                      objectFit:
+                        "contain",
                     }}
                   />
                 ) : (
                   <span
                     style={{
-                      color: "#999",
+                      color:
+                        "#999",
                     }}
                   >
                     No Image
@@ -1075,50 +1222,73 @@ export default function ProductDetailsPage() {
                 )}
               </div>
 
-              {/* Thumbnail Images */}
-
-              {allImages.length > 1 && (
+              {allImages.length >
+                1 && (
                 <div
                   style={{
-                    display: "flex",
+                    display:
+                      "flex",
                     gap: "12px",
-                    marginTop: "16px",
-                    overflowX: "auto",
-                    paddingBottom: "5px",
+                    marginTop:
+                      "16px",
+                    overflowX:
+                      "auto",
+                    paddingBottom:
+                      "5px",
                   }}
                 >
                   {allImages.map(
-                    (image, index) => (
+                    (
+                      image,
+                      index
+                    ) => (
                       <button
                         key={`${image}-${index}`}
                         type="button"
                         onClick={() =>
-                          setSelectedImage(image)
+                          setSelectedImage(
+                            image
+                          )
                         }
                         style={{
-                          width: "75px",
-                          height: "75px",
-                          minWidth: "75px",
-                          borderRadius: "10px",
-                          overflow: "hidden",
+                          width:
+                            "75px",
+                          height:
+                            "75px",
+                          minWidth:
+                            "75px",
+                          borderRadius:
+                            "10px",
+                          overflow:
+                            "hidden",
                           border:
-                            displayImage === image
+                            displayImage ===
+                            image
                               ? "2px solid #C9A227"
                               : "1px solid #ddd",
-                          background: "#fff",
-                          cursor: "pointer",
-                          padding: "3px",
+                          background:
+                            "#fff",
+                          cursor:
+                            "pointer",
+                          padding:
+                            "3px",
                         }}
                       >
                         <img
-                          src={image}
+                          src={
+                            image
+                          }
                           alt={`${product.name} ${
-                            index + 1
+                            index +
+                            1
                           }`}
                           style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
+                            width:
+                              "100%",
+                            height:
+                              "100%",
+                            objectFit:
+                              "contain",
                           }}
                         />
                       </button>
@@ -1138,15 +1308,22 @@ export default function ProductDetailsPage() {
               {product.category && (
                 <p
                   style={{
-                    color: "#C9A227",
+                    color:
+                      "#C9A227",
                     fontWeight: 700,
-                    fontSize: "14px",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                    marginBottom: "8px",
+                    fontSize:
+                      "14px",
+                    textTransform:
+                      "uppercase",
+                    letterSpacing:
+                      "1px",
+                    marginBottom:
+                      "8px",
                   }}
                 >
-                  {product.category}
+                  {
+                    product.category
+                  }
                 </p>
               )}
 
@@ -1154,10 +1331,14 @@ export default function ProductDetailsPage() {
 
               <h1
                 style={{
-                  color: "#102f56",
-                  fontSize: "34px",
-                  lineHeight: 1.2,
-                  margin: "0 0 12px",
+                  color:
+                    "#102f56",
+                  fontSize:
+                    "34px",
+                  lineHeight:
+                    1.2,
+                  margin:
+                    "0 0 12px",
                   fontWeight: 800,
                 }}
               >
@@ -1166,21 +1347,30 @@ export default function ProductDetailsPage() {
 
               {/* Brand */}
 
-              {product.brand?.name && (
+              {product.brand
+                ?.name && (
                 <p
                   style={{
-                    color: "#666",
-                    fontSize: "15px",
-                    marginBottom: "15px",
+                    color:
+                      "#666",
+                    fontSize:
+                      "15px",
+                    marginBottom:
+                      "15px",
                   }}
                 >
                   Brand:{" "}
                   <strong
                     style={{
-                      color: "#102f56",
+                      color:
+                        "#102f56",
                     }}
                   >
-                    {product.brand.name}
+                    {
+                      product
+                        .brand
+                        .name
+                    }
                   </strong>
                 </p>
               )}
@@ -1189,26 +1379,36 @@ export default function ProductDetailsPage() {
 
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
                   gap: "10px",
-                  marginBottom: "20px",
-                  flexWrap: "wrap",
+                  marginBottom:
+                    "20px",
+                  flexWrap:
+                    "wrap",
                 }}
               >
                 <span
                   style={{
-                    display: "inline-flex",
-                    alignItems: "center",
+                    display:
+                      "inline-flex",
+                    alignItems:
+                      "center",
                     gap: "5px",
-                    background: "#FFF8DF",
-                    color: "#102f56",
-                    borderRadius: "7px",
-                    padding: "7px 10px",
+                    background:
+                      "#FFF8DF",
+                    color:
+                      "#102f56",
+                    borderRadius:
+                      "7px",
+                    padding:
+                      "7px 10px",
                     fontWeight: 800,
                   }}
                 >
-                  â˜…{" "}
+                  ★{" "}
                   {productRating.averageRating.toFixed(
                     1
                   )}
@@ -1216,12 +1416,17 @@ export default function ProductDetailsPage() {
 
                 <span
                   style={{
-                    color: "#777",
-                    fontSize: "14px",
+                    color:
+                      "#777",
+                    fontSize:
+                      "14px",
                   }}
                 >
-                  {productRating.totalReviews}{" "}
-                  {productRating.totalReviews === 1
+                  {
+                    productRating.totalReviews
+                  }{" "}
+                  {productRating.totalReviews ===
+                  1
                     ? "review"
                     : "reviews"}
                 </span>
@@ -1231,16 +1436,21 @@ export default function ProductDetailsPage() {
 
               <div
                 style={{
-                  fontSize: "30px",
+                  fontSize:
+                    "30px",
                   fontWeight: 800,
-                  color: "#102f56",
-                  marginBottom: "20px",
+                  color:
+                    "#102f56",
+                  marginBottom:
+                    "20px",
                 }}
               >
-                â‚¹
+                ₹
                 {Number(
                   product.price
-                ).toLocaleString("en-IN")}
+                ).toLocaleString(
+                  "en-IN"
+                )}
               </div>
 
               {/* Description */}
@@ -1248,14 +1458,18 @@ export default function ProductDetailsPage() {
               {product.description && (
                 <div
                   style={{
-                    marginBottom: "25px",
+                    marginBottom:
+                      "25px",
                   }}
                 >
                   <h3
                     style={{
-                      color: "#102f56",
-                      fontSize: "17px",
-                      marginBottom: "8px",
+                      color:
+                        "#102f56",
+                      fontSize:
+                        "17px",
+                      marginBottom:
+                        "8px",
                     }}
                   >
                     Description
@@ -1263,13 +1477,19 @@ export default function ProductDetailsPage() {
 
                   <p
                     style={{
-                      color: "#666",
-                      lineHeight: 1.7,
-                      fontSize: "15px",
-                      whiteSpace: "pre-line",
+                      color:
+                        "#666",
+                      lineHeight:
+                        1.7,
+                      fontSize:
+                        "15px",
+                      whiteSpace:
+                        "pre-line",
                     }}
                   >
-                    {product.description}
+                    {
+                      product.description
+                    }
                   </p>
                 </div>
               )}
@@ -1278,315 +1498,214 @@ export default function ProductDetailsPage() {
                   COLOURS
               ============================================ */}
 
-              {hasColours && (
+              {hasMultipleColours && (
                 <div
                   style={{
-                    marginBottom: "25px",
+                    marginBottom:
+                      "25px",
                   }}
                 >
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
                       justifyContent:
                         "space-between",
-                      marginBottom: "14px",
+                      marginBottom:
+                        "14px",
                     }}
                   >
                     <h3
                       style={{
-                        color: "#102f56",
-                        fontSize: "16px",
+                        color:
+                          "#102f56",
+                        fontSize:
+                          "16px",
                         margin: 0,
                       }}
                     >
                       Colour
                     </h3>
 
-                    {/* 
-                      For one colour, show it as
-                      automatically selected.
-                    */}
-
                     <span
                       style={{
-                        color: "#666",
-                        fontSize: "14px",
+                        color:
+                          "#666",
+                        fontSize:
+                          "14px",
                         fontWeight: 600,
                       }}
                     >
-                      {effectiveSelectedColour}
+                      {
+                        effectiveSelectedColour
+                      }
                     </span>
                   </div>
 
-                  {/* =====================================
-                      ONE COLOUR
-                      
-                      NO selection required.
-                      
-                      This is only informational.
-                  ====================================== */}
+                  <div
+                    style={{
+                      display:
+                        "flex",
+                      flexWrap:
+                        "wrap",
+                      gap: "20px",
+                      alignItems:
+                        "flex-start",
+                    }}
+                  >
+                    {uniqueColourOptions.map(
+                      (colour) => {
+                        const isSelected =
+                          normalizeColour(
+                            selectedColour
+                          ) ===
+                          normalizeColour(
+                            colour
+                          );
 
-                  {!hasMultipleColours ? (
-                    <div
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "8px 14px 8px 8px",
-                        border:
-                          "1px solid #E5E5E5",
-                        borderRadius: "999px",
-                        background: "#FAFAFA",
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: "42px",
-                          height: "42px",
-                          minWidth: "42px",
-                          borderRadius: "50%",
-                          background:
-                            getColourValue(
-                              colourOptions[0]
-                            ),
-                          border: `2px solid ${getColourCircleBorder(
-                            colourOptions[0]
-                          )}`,
-                          boxShadow:
-                            "0 1px 4px rgba(0,0,0,0.12)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: "17px",
-                            fontWeight: 800,
-                            color: isLightColour(
-                              colourOptions[0]
-                            )
-                              ? "#333"
-                              : "#fff",
-                          }}
-                        >
-                          âœ“
-                        </span>
-                      </span>
+                        const circleColour =
+                          getColourValue(
+                            colour
+                          );
 
-                      <span
-                        style={{
-                          color: "#102f56",
-                          fontSize: "14px",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {colourOptions[0]}
-                      </span>
+                        const circleBorder =
+                          getColourCircleBorder(
+                            colour
+                          );
 
-                      <span
-                        style={{
-                          color: "#777",
-                          fontSize: "12px",
-                        }}
-                      >
-                        Selected
-                      </span>
-                    </div>
-                  ) : (
-                    /* ===================================
-                       MULTIPLE COLOURS
-
-                       Customer MUST choose one.
-                    ==================================== */
-
-                    <div>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: "20px",
-                          alignItems: "flex-start",
-                        }}
-                      >
-                        {colourOptions.map(
-                          (colour) => {
-                            const isSelected =
-                              normalizeColour(
-                                selectedColour
-                              ) ===
-                              normalizeColour(
+                        return (
+                          <button
+                            key={
+                              colour
+                            }
+                            type="button"
+                            title={`Select ${colour}`}
+                            onClick={() =>
+                              handleColourChange(
                                 colour
-                              );
-
-                            const matchingImage =
-                              product.colourImages?.find(
-                                (item) =>
-                                  normalizeColour(
-                                    item.colour
-                                  ) ===
-                                  normalizeColour(
-                                    colour
-                                  )
-                              )?.image;
-
-                            const circleColour =
-                              getColourValue(
-                                colour
-                              );
-
-                            const circleBorder =
-                              getColourCircleBorder(
-                                colour
-                              );
-
-                            return (
-                              <button
-                                key={colour}
-                                type="button"
-                                title={`Select ${colour}`}
-                                onClick={() =>
-                                  handleColourChange(
-                                    colour
-                                  )}
-                                style={{
-                                  border: "none",
-                                  background:
-                                    "transparent",
-                                  padding: 0,
-                                  margin: 0,
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  flexDirection:
-                                    "column",
-                                  alignItems:
-                                    "center",
-                                  gap: "8px",
-                                  minWidth: "68px",
-                                }}
-                              >
-                                {/* Colour Circle */}
-
+                              )
+                            }
+                            style={{
+                              border:
+                                "none",
+                              background:
+                                "transparent",
+                              padding:
+                                0,
+                              margin:
+                                0,
+                              cursor:
+                                "pointer",
+                              display:
+                                "flex",
+                              flexDirection:
+                                "column",
+                              alignItems:
+                                "center",
+                              gap: "8px",
+                              minWidth:
+                                "68px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width:
+                                  "52px",
+                                height:
+                                  "52px",
+                                minWidth:
+                                  "52px",
+                                borderRadius:
+                                  "50%",
+                                background:
+                                  circleColour,
+                                border:
+                                  isSelected
+                                    ? "3px solid #C9A227"
+                                    : `2px solid ${circleBorder}`,
+                                boxShadow:
+                                  isSelected
+                                    ? "0 0 0 4px #FFF3C4, 0 3px 8px rgba(0,0,0,0.12)"
+                                    : "0 2px 6px rgba(0,0,0,0.12)",
+                                display:
+                                  "flex",
+                                alignItems:
+                                  "center",
+                                justifyContent:
+                                  "center",
+                              }}
+                            >
+                              {isSelected && (
                                 <span
                                   style={{
-                                    width: "52px",
-                                    height: "52px",
-                                    minWidth: "52px",
+                                    width:
+                                      "25px",
+                                    height:
+                                      "25px",
                                     borderRadius:
                                       "50%",
-                                    background:
-                                      circleColour,
-                                    border: isSelected
-                                      ? "3px solid #C9A227"
-                                      : `2px solid ${circleBorder}`,
-                                    boxShadow:
-                                      isSelected
-                                        ? "0 0 0 4px #FFF3C4, 0 3px 8px rgba(0,0,0,0.12)"
-                                        : "0 2px 6px rgba(0,0,0,0.12)",
-                                    display: "flex",
+                                    display:
+                                      "flex",
                                     alignItems:
                                       "center",
                                     justifyContent:
                                       "center",
-                                    transition:
-                                      "all 0.2s ease",
-                                  }}
-                                >
-                                  {isSelected && (
-                                    <span
-                                      style={{
-                                        width:
-                                          "25px",
-                                        height:
-                                          "25px",
-                                        borderRadius:
-                                          "50%",
-                                        display:
-                                          "flex",
-                                        alignItems:
-                                          "center",
-                                        justifyContent:
-                                          "center",
-                                        background:
-                                          isLightColour(
-                                            colour
-                                          )
-                                            ? "rgba(0,0,0,0.08)"
-                                            : "rgba(255,255,255,0.2)",
-                                        color:
-                                          isLightColour(
-                                            colour
-                                          )
-                                            ? "#333"
-                                            : "#fff",
-                                        fontSize:
-                                          "15px",
-                                        fontWeight:
-                                          900,
-                                      }}
-                                    >
-                                      âœ“
-                                    </span>
-                                  )}
-                                </span>
-
-                                {/* Colour Name */}
-
-                                <span
-                                  style={{
-                                    color: isSelected
-                                      ? "#102f56"
-                                      : "#555",
+                                    background:
+                                      isLightColour(
+                                        colour
+                                      )
+                                        ? "rgba(0,0,0,0.08)"
+                                        : "rgba(255,255,255,0.2)",
+                                    color:
+                                      isLightColour(
+                                        colour
+                                      )
+                                        ? "#333"
+                                        : "#fff",
                                     fontSize:
-                                      "13px",
+                                      "15px",
                                     fontWeight:
-                                      isSelected
-                                        ? 700
-                                        : 500,
-                                    textAlign:
-                                      "center",
-                                    lineHeight: 1.2,
-                                    maxWidth:
-                                      "85px",
-                                    wordBreak:
-                                      "break-word",
+                                      900,
                                   }}
                                 >
-                                  {colour}
+                                  ✓
                                 </span>
+                              )}
+                            </span>
 
-                                {matchingImage && (
-                                  <span
-                                    style={{
-                                      display: "none",
-                                    }}
-                                  >
-                                    {matchingImage}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          }
-                        )}
-                      </div>
-
-                      {!selectedColour && (
-                        <p
-                          style={{
-                            margin:
-                              "12px 0 0",
-                            color: "#777",
-                            fontSize: "13px",
-                          }}
-                        >
-                          Please select a colour
-                          before adding to
-                          basket.
-                        </p>
-                      )}
-                    </div>
-                  )}
+                            <span
+                              style={{
+                                color:
+                                  isSelected
+                                    ? "#102f56"
+                                    : "#555",
+                                fontSize:
+                                  "13px",
+                                fontWeight:
+                                  isSelected
+                                    ? 700
+                                    : 500,
+                                textAlign:
+                                  "center",
+                                lineHeight:
+                                  1.2,
+                                maxWidth:
+                                  "85px",
+                                wordBreak:
+                                  "break-word",
+                              }}
+                            >
+                              {
+                                colour
+                              }
+                            </span>
+                          </button>
+                        );
+                      }
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1595,25 +1714,32 @@ export default function ProductDetailsPage() {
               ============================================ */}
 
               {product.sizes &&
-                product.sizes.length > 0 && (
+                product.sizes.length >
+                  0 && (
                   <div
                     style={{
-                      marginBottom: "22px",
+                      marginBottom:
+                        "22px",
                     }}
                   >
                     <div
                       style={{
-                        display: "flex",
+                        display:
+                          "flex",
                         justifyContent:
                           "space-between",
-                        alignItems: "center",
-                        marginBottom: "10px",
+                        alignItems:
+                          "center",
+                        marginBottom:
+                          "10px",
                       }}
                     >
                       <h3
                         style={{
-                          color: "#102f56",
-                          fontSize: "16px",
+                          color:
+                            "#102f56",
+                          fontSize:
+                            "16px",
                           margin: 0,
                         }}
                       >
@@ -1624,15 +1750,21 @@ export default function ProductDetailsPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            setShowSizeChart(true)
+                            setShowSizeChart(
+                              true
+                            )
                           }
                           style={{
-                            border: "none",
+                            border:
+                              "none",
                             background:
                               "transparent",
-                            color: "#C9A227",
-                            fontWeight: 700,
-                            cursor: "pointer",
+                            color:
+                              "#C9A227",
+                            fontWeight:
+                              700,
+                            cursor:
+                              "pointer",
                           }}
                         >
                           Size Chart
@@ -1642,8 +1774,10 @@ export default function ProductDetailsPage() {
 
                     <div
                       style={{
-                        display: "flex",
-                        flexWrap: "wrap",
+                        display:
+                          "flex",
+                        flexWrap:
+                          "wrap",
                         gap: "10px",
                       }}
                     >
@@ -1655,15 +1789,18 @@ export default function ProductDetailsPage() {
 
                           return (
                             <button
-                              key={size}
+                              key={
+                                size
+                              }
                               type="button"
                               onClick={() =>
-                                setSelectedSize(
+                                handleSizeChange(
                                   size
                                 )
                               }
                               style={{
-                                minWidth: "52px",
+                                minWidth:
+                                  "52px",
                                 padding:
                                   "10px 14px",
                                 borderRadius:
@@ -1698,61 +1835,61 @@ export default function ProductDetailsPage() {
               {/* ===========================================
                   STOCK
               ============================================ */}
-
-              <div
-                style={{
-                  marginBottom: "20px",
-                }}
-              >
-                {product.stock > 0 ? (
-                  <p
-                    style={{
-                      color: "#238636",
-                      fontWeight: 700,
-                      margin: 0,
-                    }}
-                  >
-                    âœ“ In Stock{" "}
-                    <span
-                      style={{
-                        color: "#777",
-                        fontWeight: 400,
-                      }}
-                    >
-                      ({product.stock}{" "}
-                      available)
-                    </span>
-                  </p>
-                ) : (
-                  <p
-                    style={{
-                      color: "#d32f2f",
-                      fontWeight: 700,
-                      margin: 0,
-                    }}
-                  >
-                    Out of Stock
-                  </p>
-                )}
-              </div>
+<div
+  style={{
+    marginBottom: "20px",
+  }}
+>
+  {availableStock > 0 ? (
+    <p
+      style={{
+        color: "#238636",
+        fontWeight: 700,
+        margin: 0,
+      }}
+    >
+      ✓ In Stock
+    </p>
+  ) : (
+    <p
+      style={{
+        color: "#d32f2f",
+        fontWeight: 700,
+        margin: 0,
+      }}
+    >
+      {product.sizes &&
+      product.sizes.length > 0 &&
+      !selectedSize
+        ? "Select a size to check stock"
+        : "Out of Stock"}
+    </p>
+  )}
+</div>
 
               {/* ===========================================
                   QUANTITY
               ============================================ */}
 
-              {product.stock > 0 && (
+              {availableStock >
+                0 && (
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
                     gap: "14px",
-                    marginBottom: "22px",
+                    marginBottom:
+                      "22px",
                   }}
                 >
                   <span
                     style={{
-                      color: "#102f56",
-                      fontWeight: 700,
+                      color:
+                        "#102f56",
+                      fontWeight:
+                        700,
                     }}
                   >
                     Quantity
@@ -1760,11 +1897,16 @@ export default function ProductDetailsPage() {
 
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      border: "1px solid #ddd",
-                      borderRadius: "8px",
-                      overflow: "hidden",
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      border:
+                        "1px solid #ddd",
+                      borderRadius:
+                        "8px",
+                      overflow:
+                        "hidden",
                     }}
                   >
                     <button
@@ -1773,27 +1915,38 @@ export default function ProductDetailsPage() {
                         decreaseQuantity
                       }
                       style={{
-                        width: "38px",
-                        height: "38px",
-                        border: "none",
+                        width:
+                          "38px",
+                        height:
+                          "38px",
+                        border:
+                          "none",
                         background:
                           "#f8f8f8",
-                        cursor: "pointer",
-                        fontSize: "18px",
+                        cursor:
+                          "pointer",
+                        fontSize:
+                          "18px",
                       }}
                     >
-                      âˆ’
+                      −
                     </button>
 
                     <span
                       style={{
-                        width: "45px",
-                        textAlign: "center",
-                        fontWeight: 700,
-                        color: "#102f56",
+                        width:
+                          "45px",
+                        textAlign:
+                          "center",
+                        fontWeight:
+                          700,
+                        color:
+                          "#102f56",
                       }}
                     >
-                      {quantity}
+                      {
+                        quantity
+                      }
                     </span>
 
                     <button
@@ -1802,13 +1955,18 @@ export default function ProductDetailsPage() {
                         increaseQuantity
                       }
                       style={{
-                        width: "38px",
-                        height: "38px",
-                        border: "none",
+                        width:
+                          "38px",
+                        height:
+                          "38px",
+                        border:
+                          "none",
                         background:
                           "#f8f8f8",
-                        cursor: "pointer",
-                        fontSize: "18px",
+                        cursor:
+                          "pointer",
+                        fontSize:
+                          "18px",
                       }}
                     >
                       +
@@ -1823,37 +1981,51 @@ export default function ProductDetailsPage() {
 
               <div
                 style={{
-                  display: "flex",
+                  display:
+                    "flex",
                   gap: "12px",
-                  flexWrap: "wrap",
-                  marginBottom: "25px",
+                  flexWrap:
+                    "wrap",
+                  marginBottom:
+                    "25px",
                 }}
               >
                 <button
                   type="button"
-                  onClick={handleAddToBag}
+                  onClick={
+                    handleAddToBag
+                  }
                   disabled={
                     addingToBag ||
-                    product.stock <= 0 ||
+                    availableStock <=
+                      0 ||
                     !isProductActive
                   }
                   style={{
-                    flex: "1 1 220px",
-                    minHeight: "50px",
-                    border: "none",
-                    borderRadius: "9px",
+                    flex:
+                      "1 1 220px",
+                    minHeight:
+                      "50px",
+                    border:
+                      "none",
+                    borderRadius:
+                      "9px",
                     background:
                       addingToBag ||
-                      product.stock <= 0 ||
+                      availableStock <=
+                        0 ||
                       !isProductActive
                         ? "#ccc"
                         : "#102f56",
                     color: "#fff",
-                    fontSize: "16px",
-                    fontWeight: 700,
+                    fontSize:
+                      "16px",
+                    fontWeight:
+                      700,
                     cursor:
                       addingToBag ||
-                      product.stock <= 0 ||
+                      availableStock <=
+                        0 ||
                       !isProductActive
                         ? "not-allowed"
                         : "pointer",
@@ -1861,7 +2033,8 @@ export default function ProductDetailsPage() {
                 >
                   {addingToBag
                     ? "Adding..."
-                    : product.stock <= 0
+                    : availableStock <=
+                      0
                     ? "Out of Stock"
                     : "Add to Basket"}
                 </button>
@@ -1875,15 +2048,22 @@ export default function ProductDetailsPage() {
                     addingToWishlist
                   }
                   style={{
-                    minHeight: "50px",
-                    padding: "0 22px",
-                    borderRadius: "9px",
+                    minHeight:
+                      "50px",
+                    padding:
+                      "0 22px",
+                    borderRadius:
+                      "9px",
                     border:
                       "1.5px solid #C9A227",
-                    background: "#FFFDF5",
-                    color: "#102f56",
-                    fontSize: "16px",
-                    fontWeight: 700,
+                    background:
+                      "#FFFDF5",
+                    color:
+                      "#102f56",
+                    fontSize:
+                      "16px",
+                    fontWeight:
+                      700,
                     cursor:
                       addingToWishlist
                         ? "not-allowed"
@@ -1892,7 +2072,7 @@ export default function ProductDetailsPage() {
                 >
                   {addingToWishlist
                     ? "Adding..."
-                    : "â™¡ Wishlist"}
+                    : "♡ Wishlist"}
                 </button>
               </div>
             </div>
@@ -1907,21 +2087,26 @@ export default function ProductDetailsPage() {
           style={{
             maxWidth: "1200px",
             margin: "0 auto",
-            padding: "0 20px 70px",
+            padding:
+              "0 20px 70px",
           }}
         >
           <div
             style={{
               borderTop:
                 "1px solid #e8e8e8",
-              paddingTop: "45px",
+              paddingTop:
+                "45px",
             }}
           >
             <h2
               style={{
-                color: "#102f56",
-                fontSize: "28px",
-                marginBottom: "30px",
+                color:
+                  "#102f56",
+                fontSize:
+                  "28px",
+                marginBottom:
+                  "30px",
                 fontWeight: 800,
               }}
             >
@@ -1932,36 +2117,46 @@ export default function ProductDetailsPage() {
 
             <div
               style={{
-                display: "grid",
+                display:
+                  "grid",
                 gridTemplateColumns:
                   "260px minmax(0, 1fr)",
                 gap: "45px",
-                padding: "25px",
-                background: "#F8F9FB",
-                borderRadius: "14px",
-                marginBottom: "40px",
+                padding:
+                  "25px",
+                background:
+                  "#F8F9FB",
+                borderRadius:
+                  "14px",
+                marginBottom:
+                  "40px",
               }}
               className="review-summary-grid"
             >
-              {/* Average */}
-
               <div
                 style={{
-                  textAlign: "center",
-                  display: "flex",
+                  textAlign:
+                    "center",
+                  display:
+                    "flex",
                   flexDirection:
                     "column",
-                  alignItems: "center",
+                  alignItems:
+                    "center",
                   justifyContent:
                     "center",
                 }}
               >
                 <div
                   style={{
-                    fontSize: "52px",
-                    lineHeight: 1,
-                    fontWeight: 800,
-                    color: "#102f56",
+                    fontSize:
+                      "52px",
+                    lineHeight:
+                      1,
+                    fontWeight:
+                      800,
+                    color:
+                      "#102f56",
                   }}
                 >
                   {productRating.averageRating.toFixed(
@@ -1971,19 +2166,25 @@ export default function ProductDetailsPage() {
 
                 <div
                   style={{
-                    color: "#C9A227",
-                    fontSize: "24px",
-                    letterSpacing: "2px",
-                    margin: "8px 0",
+                    color:
+                      "#C9A227",
+                    fontSize:
+                      "24px",
+                    letterSpacing:
+                      "2px",
+                    margin:
+                      "8px 0",
                   }}
                 >
-                  â˜…â˜…â˜…â˜…â˜…
+                  ★★★★★
                 </div>
 
                 <div
                   style={{
-                    color: "#777",
-                    fontSize: "14px",
+                    color:
+                      "#777",
+                    fontSize:
+                      "14px",
                   }}
                 >
                   Based on{" "}
@@ -1999,19 +2200,25 @@ export default function ProductDetailsPage() {
                 </div>
               </div>
 
-              {/* Distribution */}
-
               <div>
                 {ratingRows.map(
-                  ({ star, count }) => {
+                  ({
+                    star,
+                    count,
+                  }) => {
                     const percentage =
-                      getPercentage(count);
+                      getPercentage(
+                        count
+                      );
 
                     return (
                       <div
-                        key={star}
+                        key={
+                          star
+                        }
                         style={{
-                          display: "grid",
+                          display:
+                            "grid",
                           gridTemplateColumns:
                             "45px 1fr 55px",
                           alignItems:
@@ -2027,15 +2234,20 @@ export default function ProductDetailsPage() {
                               "#102f56",
                             fontSize:
                               "14px",
-                            fontWeight: 700,
+                            fontWeight:
+                              700,
                           }}
                         >
-                          {star} â˜…
+                          {
+                            star
+                          }{" "}
+                          ★
                         </span>
 
                         <div
                           style={{
-                            height: "9px",
+                            height:
+                              "9px",
                             background:
                               "#e3e3e3",
                             borderRadius:
@@ -2047,27 +2259,30 @@ export default function ProductDetailsPage() {
                           <div
                             style={{
                               width: `${percentage}%`,
-                              height: "100%",
+                              height:
+                                "100%",
                               background:
                                 "#C9A227",
                               borderRadius:
                                 "20px",
-                              transition:
-                                "width 0.3s ease",
                             }}
                           />
                         </div>
 
                         <span
                           style={{
-                            color: "#777",
+                            color:
+                              "#777",
                             fontSize:
                               "13px",
                             textAlign:
                               "right",
                           }}
                         >
-                          {percentage}%
+                          {
+                            percentage
+                          }
+                          %
                         </span>
                       </div>
                     );
@@ -2081,37 +2296,49 @@ export default function ProductDetailsPage() {
             {reviewsLoading ? (
               <div
                 style={{
-                  padding: "30px",
-                  textAlign: "center",
-                  color: "#777",
+                  padding:
+                    "30px",
+                  textAlign:
+                    "center",
+                  color:
+                    "#777",
                 }}
               >
                 Loading reviews...
               </div>
-            ) : reviews.length === 0 ? (
+            ) : reviews.length ===
+              0 ? (
               <div
                 style={{
-                  padding: "35px",
-                  textAlign: "center",
+                  padding:
+                    "35px",
+                  textAlign:
+                    "center",
                   border:
                     "1px solid #eee",
-                  borderRadius: "12px",
-                  background: "#fff",
+                  borderRadius:
+                    "12px",
+                  background:
+                    "#fff",
                 }}
               >
                 <div
                   style={{
-                    fontSize: "38px",
-                    marginBottom: "10px",
+                    fontSize:
+                      "38px",
+                    marginBottom:
+                      "10px",
                   }}
                 >
-                  â˜†
+                  ☆
                 </div>
 
                 <h3
                   style={{
-                    color: "#102f56",
-                    marginBottom: "7px",
+                    color:
+                      "#102f56",
+                    marginBottom:
+                      "7px",
                   }}
                 >
                   No reviews yet
@@ -2119,7 +2346,8 @@ export default function ProductDetailsPage() {
 
                 <p
                   style={{
-                    color: "#777",
+                    color:
+                      "#777",
                     margin: 0,
                   }}
                 >
@@ -2131,125 +2359,143 @@ export default function ProductDetailsPage() {
             ) : (
               <div
                 style={{
-                  display: "flex",
+                  display:
+                    "flex",
                   flexDirection:
                     "column",
                   gap: "18px",
                 }}
               >
-                {reviews.map((review) => {
-                  const rating = Math.min(
-                    5,
-                    Math.max(
-                      0,
-                      Number(review.rating)
-                    )
-                  );
+                {reviews.map(
+                  (review) => {
+                    const rating =
+                      Math.min(
+                        5,
+                        Math.max(
+                          0,
+                          Number(
+                            review.rating
+                          )
+                        )
+                      );
 
-                  return (
-                    <article
-                      key={review.id}
-                      style={{
-                        border:
-                          "1px solid #e7e7e7",
-                        borderRadius: "12px",
-                        padding: "22px",
-                        background: "#fff",
-                      }}
-                    >
-                      {/* Customer + Rating */}
-
-                      <div
+                    return (
+                      <article
+                        key={
+                          review.id
+                        }
                         style={{
-                          display: "flex",
-                          justifyContent:
-                            "space-between",
-                          alignItems:
-                            "flex-start",
-                          gap: "15px",
-                          flexWrap:
-                            "wrap",
-                          marginBottom:
+                          border:
+                            "1px solid #e7e7e7",
+                          borderRadius:
                             "12px",
+                          padding:
+                            "22px",
+                          background:
+                            "#fff",
                         }}
                       >
-                        <div>
-                          <div
-                            style={{
-                              color:
-                                "#102f56",
-                              fontWeight:
-                                800,
-                              fontSize:
-                                "16px",
-                              marginBottom:
-                                "5px",
-                            }}
-                          >
-                            {review.customerName ||
-                              "Customer"}
+                        <div
+                          style={{
+                            display:
+                              "flex",
+                            justifyContent:
+                              "space-between",
+                            alignItems:
+                              "flex-start",
+                            gap:
+                              "15px",
+                            flexWrap:
+                              "wrap",
+                            marginBottom:
+                              "12px",
+                          }}
+                        >
+                          <div>
+                            <div
+                              style={{
+                                color:
+                                  "#102f56",
+                                fontWeight:
+                                  800,
+                                fontSize:
+                                  "16px",
+                                marginBottom:
+                                  "5px",
+                              }}
+                            >
+                              {review.customerName ||
+                                "Customer"}
+                            </div>
+
+                            <div
+                              style={{
+                                display:
+                                  "flex",
+                                gap:
+                                  "2px",
+                                fontSize:
+                                  "18px",
+                              }}
+                            >
+                              {[1, 2, 3, 4, 5].map(
+                                (star) => (
+                                  <span
+                                    key={
+                                      star
+                                    }
+                                    style={{
+                                      color:
+                                        star <=
+                                        rating
+                                          ? "#C9A227"
+                                          : "#ddd",
+                                    }}
+                                  >
+                                    ★
+                                  </span>
+                                )
+                              )}
+                            </div>
                           </div>
 
-                          <div
-                            style={{
-                              display:
-                                "flex",
-                              gap: "2px",
-                              fontSize:
-                                "18px",
-                            }}
-                          >
-                            {[1, 2, 3, 4, 5].map(
-                              (star) => (
-                                <span
-                                  key={star}
-                                  style={{
-                                    color:
-                                      star <=
-                                      rating
-                                        ? "#C9A227"
-                                        : "#ddd",
-                                  }}
-                                >
-                                  â˜…
-                                </span>
-                              )
-                            )}
-                          </div>
+                          {review.createdAt && (
+                            <span
+                              style={{
+                                color:
+                                  "#888",
+                                fontSize:
+                                  "13px",
+                              }}
+                            >
+                              {formatReviewDate(
+                                review.createdAt
+                              )}
+                            </span>
+                          )}
                         </div>
 
-                        {review.createdAt && (
-                          <span
-                            style={{
-                              color: "#888",
-                              fontSize:
-                                "13px",
-                            }}
-                          >
-                            {formatReviewDate(
-                              review.createdAt
-                            )}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Comment */}
-
-                      <p
-                        style={{
-                          color: "#555",
-                          lineHeight: 1.7,
-                          margin: 0,
-                          fontSize: "15px",
-                          whiteSpace:
-                            "pre-line",
-                        }}
-                      >
-                        {review.comment}
-                      </p>
-                    </article>
-                  );
-                })}
+                        <p
+                          style={{
+                            color:
+                              "#555",
+                            lineHeight:
+                              1.7,
+                            margin: 0,
+                            fontSize:
+                              "15px",
+                            whiteSpace:
+                              "pre-line",
+                          }}
+                        >
+                          {
+                            review.comment
+                          }
+                        </p>
+                      </article>
+                    );
+                  }
+                )}
               </div>
             )}
           </div>
@@ -2264,17 +2510,23 @@ export default function ProductDetailsPage() {
         product.sizechart && (
           <div
             onClick={() =>
-              setShowSizeChart(false)
+              setShowSizeChart(
+                false
+              )
             }
             style={{
-              position: "fixed",
+              position:
+                "fixed",
               inset: 0,
               background:
                 "rgba(0,0,0,0.55)",
               zIndex: 1000,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              display:
+                "flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
               padding: "20px",
             }}
           >
@@ -2283,54 +2535,82 @@ export default function ProductDetailsPage() {
                 event.stopPropagation()
               }
               style={{
-                background: "#fff",
-                borderRadius: "14px",
-                padding: "20px",
-                maxWidth: "900px",
-                maxHeight: "90vh",
-                overflow: "auto",
-                position: "relative",
+                background:
+                  "#fff",
+                borderRadius:
+                  "14px",
+                padding:
+                  "20px",
+                maxWidth:
+                  "900px",
+                maxHeight:
+                  "90vh",
+                overflow:
+                  "auto",
+                position:
+                  "relative",
               }}
             >
               <button
                 type="button"
                 onClick={() =>
-                  setShowSizeChart(false)
+                  setShowSizeChart(
+                    false
+                  )
                 }
                 style={{
-                  position: "absolute",
-                  top: "10px",
-                  right: "12px",
-                  width: "35px",
-                  height: "35px",
-                  borderRadius: "50%",
-                  border: "none",
-                  background: "#102f56",
-                  color: "#fff",
-                  fontSize: "20px",
-                  cursor: "pointer",
+                  position:
+                    "absolute",
+                  top:
+                    "10px",
+                  right:
+                    "12px",
+                  width:
+                    "35px",
+                  height:
+                    "35px",
+                  borderRadius:
+                    "50%",
+                  border:
+                    "none",
+                  background:
+                    "#102f56",
+                  color:
+                    "#fff",
+                  fontSize:
+                    "20px",
+                  cursor:
+                    "pointer",
                 }}
               >
-                Ã—
+                ×
               </button>
 
               <h2
                 style={{
-                  color: "#102f56",
-                  marginBottom: "18px",
-                  paddingRight: "45px",
+                  color:
+                    "#102f56",
+                  marginBottom:
+                    "18px",
+                  paddingRight:
+                    "45px",
                 }}
               >
                 Size Chart
               </h2>
 
               <img
-                src={product.sizechart}
+                src={
+                  product.sizechart
+                }
                 alt={`${product.name} size chart`}
                 style={{
-                  maxWidth: "100%",
-                  height: "auto",
-                  display: "block",
+                  maxWidth:
+                    "100%",
+                  height:
+                    "auto",
+                  display:
+                    "block",
                 }}
               />
             </div>
@@ -2338,7 +2618,7 @@ export default function ProductDetailsPage() {
         )}
 
       {/* ===================================================
-          RESPONSIVE STYLES
+          RESPONSIVE
       =================================================== */}
 
       <style jsx>{`
@@ -2363,3 +2643,9 @@ export default function ProductDetailsPage() {
     </>
   );
 }
+
+
+
+
+
+

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-
 type MediaItem = {
   id: string;
   mediaType: string;
@@ -34,6 +33,12 @@ const GET_MEDIA = `
   }
 `;
 
+const DELETE_MEDIA = `
+  mutation DeleteMedia($id: ID!) {
+    deleteMedia(id: $id)
+  }
+`;
+
 export default function MediaLibrary({
   selectedMedia = [],
   onSelect,
@@ -41,6 +46,7 @@ export default function MediaLibrary({
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const loadMedia = async () => {
@@ -65,7 +71,9 @@ export default function MediaLibrary({
       const result = await response.json();
 
       if (result.errors) {
-        throw new Error(result.errors[0]?.message || "Failed to load media");
+        throw new Error(
+          result.errors[0]?.message || "Failed to load media"
+        );
       }
 
       setMedia(result.data?.media || []);
@@ -186,8 +194,66 @@ export default function MediaLibrary({
       );
     } finally {
       setUploading(false);
-
       event.target.value = "";
+    }
+  };
+
+  const handleDelete = async (mediaItem: MediaItem) => {
+    const confirmed = window.confirm(
+      `Delete "${mediaItem.altText || "this image"}" from the Media Library?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingId(mediaItem.id);
+      setError("");
+
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_GRAPHQL_URL ||
+          "http://localhost:4000/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: DELETE_MEDIA,
+            variables: {
+              id: mediaItem.id,
+            },
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.errors) {
+        throw new Error(
+          result.errors[0]?.message ||
+            "Failed to delete media."
+        );
+      }
+
+      if (!result.data?.deleteMedia) {
+        throw new Error("Media could not be deleted.");
+      }
+
+      setMedia((previous) =>
+        previous.filter((item) => item.id !== mediaItem.id)
+      );
+    } catch (error) {
+      console.error("MEDIA DELETE ERROR:", error);
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete media."
+      );
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -301,53 +367,63 @@ export default function MediaLibrary({
           }}
         >
           {media.map((mediaItem) => (
-            <button
+            <div
               key={mediaItem.id}
-              type="button"
-              onClick={() => onSelect(mediaItem)}
               style={{
                 position: "relative",
-                padding: 0,
                 border: isSelected(mediaItem)
                   ? "3px solid #C9A227"
                   : "1px solid #ddd",
                 borderRadius: "10px",
                 overflow: "hidden",
                 background: "#fff",
-                cursor: "pointer",
-                textAlign: "left",
               }}
             >
-              <img
-                src={mediaItem.url}
-                alt={mediaItem.altText || "Media"}
+              <button
+                type="button"
+                onClick={() => onSelect(mediaItem)}
                 style={{
-                  width: "100%",
-                  height: "150px",
-                  objectFit: "cover",
                   display: "block",
-                }}
-              />
-
-              <div
-                style={{
-                  padding: "8px",
-                  fontSize: "12px",
-                  color: "#555",
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
+                  width: "100%",
+                  padding: 0,
+                  border: "none",
+                  background: "#fff",
+                  cursor: "pointer",
+                  textAlign: "left",
                 }}
               >
-                {mediaItem.altText || "Image"}
-              </div>
+                <img
+                  src={mediaItem.url}
+                  alt={mediaItem.altText || "Media"}
+                  style={{
+                    width: "100%",
+                    height: "150px",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+
+                <div
+                  style={{
+                    padding: "8px",
+                    paddingRight: "50px",
+                    fontSize: "12px",
+                    color: "#555",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {mediaItem.altText || "Image"}
+                </div>
+              </button>
 
               {isSelected(mediaItem) && (
                 <div
                   style={{
                     position: "absolute",
                     top: "8px",
-                    right: "8px",
+                    left: "8px",
                     width: "24px",
                     height: "24px",
                     borderRadius: "50%",
@@ -357,12 +433,42 @@ export default function MediaLibrary({
                     alignItems: "center",
                     justifyContent: "center",
                     fontWeight: 700,
+                    zIndex: 2,
                   }}
                 >
                   ✓
                 </div>
               )}
-            </button>
+
+              <button
+                type="button"
+                onClick={() => handleDelete(mediaItem)}
+                disabled={deletingId === mediaItem.id}
+                style={{
+                  position: "absolute",
+                  top: "8px",
+                  right: "8px",
+                  padding: "5px 8px",
+                  border: "none",
+                  borderRadius: "6px",
+                  background: "#c62828",
+                  color: "#fff",
+                  cursor:
+                    deletingId === mediaItem.id
+                      ? "not-allowed"
+                      : "pointer",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  zIndex: 2,
+                  opacity:
+                    deletingId === mediaItem.id ? 0.6 : 1,
+                }}
+              >
+                {deletingId === mediaItem.id
+                  ? "Deleting..."
+                  : "Delete"}
+              </button>
+            </div>
           ))}
         </div>
       )}

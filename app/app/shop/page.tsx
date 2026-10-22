@@ -2,7 +2,7 @@
 
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../../components/Header/Header";
 
@@ -30,6 +30,7 @@ type ColourImage = {
   image: string;
 };
 
+
 type Product = {
   id: string;
   name: string;
@@ -48,45 +49,52 @@ type Product = {
   status?: string;
 };
 
+
 /* =========================================================
    PRODUCTS QUERY
 ========================================================= */
-
 const PRODUCTS_QUERY = gql`
   query Products($page: Int!, $limit: Int!) {
     products(page: $page, limit: $limit) {
       products {
         id
         name
-        price
-        image
-        category
-
+        status
+        slug
+        description
+        categories
         brand {
           id
           name
         }
-
-        description
-        stock
-        sizes
-        colours
-
-        colourImages {
-          colour
-          image
+        mainMedia {
+          type
+          url
         }
-
-        status
+        images {
+          type
+          url
+        }
+        items {
+          id
+          price
+          sellingPrice
+          mrp
+          stock
+          size
+          colour
+          images {
+            type
+            url
+          }
+        }
       }
-
       page
       limit
       hasMore
     }
   }
 `;
-
 /* =========================================================
    BRANDS QUERY
 ========================================================= */
@@ -248,28 +256,29 @@ export default function ShopPage() {
 
     setSearchText(search);
   }, []);
-
   /* =======================================================
      DATA
   ======================================================= */
+
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   const {
     data: productsData,
     loading: productsLoading,
     error: productsError,
-    refetch: refetchProducts,
+    fetchMore,
   } = useQuery<any>(PRODUCTS_QUERY, {
     variables: {
       page: 1,
-      limit: 1000,
+      limit: 8,
     },
     fetchPolicy: "network-only",
   });
 
-  useEffect(() => {
-    refetchProducts();
-  }, [refetchProducts]);
+  const hasMoreProducts = Boolean(productsData?.products?.hasMore);
 
+  
   const {
     data: brandsData,
     loading: brandsLoading,
@@ -284,6 +293,71 @@ export default function ShopPage() {
     data: reviewsData,
   } = useQuery<any>(REVIEWS_QUERY);
 
+
+  useEffect(() => {
+    const node = loadMoreRef.current;
+
+    if (
+      !node ||
+      !hasMoreProducts ||
+      productsLoading ||
+      isFetchingMore
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+
+        const nextPage = (productsData?.products?.page || 1) + 1;
+
+        setIsFetchingMore(true);
+
+        fetchMore({
+          variables: {
+            page: nextPage,
+            limit: 8,
+          },
+          updateQuery: (previousResult, { fetchMoreResult }) => {
+            if (!fetchMoreResult) return previousResult;
+
+            return {
+              ...previousResult,
+              products: {
+                ...fetchMoreResult.products,
+                products: [
+                  ...(previousResult.products?.products || []),
+                  ...(fetchMoreResult.products?.products || []),
+                ],
+              },
+            };
+          },
+        })
+          .catch((error: unknown) => {
+            console.error("Failed to load more products:", error);
+          })
+          .finally(() => {
+            setIsFetchingMore(false);
+          });
+      },
+      {
+        rootMargin: "150px",
+      }
+    );
+
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [
+    hasMoreProducts,
+    productsLoading,
+    isFetchingMore,
+    productsData,
+    fetchMore,
+  ]);
+
+  
   /* =======================================================
      AUTH STATE FOR WISHLIST
   ======================================================= */
@@ -434,9 +508,82 @@ export default function ShopPage() {
      PRODUCTS
   ======================================================= */
 
-  const products: Product[] =
-    productsData?.products?.products || [];
+const products: Product[] = (
+  productsData?.products?.products || []
+).map((item: any) => {
+  const variants = item.items || [];
 
+  const firstVariant = variants[0];
+
+  const allImages = [
+    ...(item.mainMedia || []),
+    ...(item.images || []),
+    ...variants.flatMap(
+      (variant: any) => variant.images || []
+    ),
+  ];
+
+  const image =
+    allImages.find(
+      (media: any) =>
+        media.type === "image" && media.url
+    )?.url ||
+    allImages.find((media: any) => media.url)?.url ||
+    "";
+
+  return {
+    id: item.id,
+    name: item.name,
+    
+    price: Number(
+  firstVariant?.sellingPrice > 0
+    ? firstVariant.sellingPrice
+    : firstVariant?.price > 0
+      ? firstVariant.price
+      : firstVariant?.mrp > 0
+        ? firstVariant.mrp
+        : 0
+),
+
+    image,
+    category: item.categories?.[0] || "",
+    brand: item.brand,
+    description: item.description || "",
+    
+stock: variants.length
+  ? variants.reduce(
+      (total: number, variant: any) =>
+        total + Number(variant.stock || 0),
+      0
+    )
+  : undefined,
+
+    sizes: [
+      ...new Set(
+        variants
+          .map((variant: any) => variant.size)
+          .filter(Boolean)
+      ),
+    ] as string[],
+    colours: [
+      ...new Set(
+        variants
+          .map((variant: any) => variant.colour)
+          .filter(Boolean)
+      ),
+    ] as string[],
+    colourImages: variants.flatMap(
+      (variant: any) =>
+        (variant.images || [])
+          .filter((media: any) => media.url)
+          .map((media: any) => ({
+            colour: variant.colour || "",
+            image: media.url,
+          }))
+    ),
+    status: item.status,
+  };
+});
   /* =======================================================
      BRANDS
   ======================================================= */
@@ -1580,13 +1727,11 @@ if (normalizedSearch) {
                   </button>
 
                 </div>
+) : (
+  <>
+    {/* PRODUCT GRID */}
 
-              ) : (
-
-                /* PRODUCT GRID */
-
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
                   {sortedProducts.map(
                     (product) => {
 
@@ -1862,11 +2007,18 @@ if (normalizedSearch) {
                         </article>
                       );
                     }
-                  )}
-
+                                    )}
                 </div>
-              )}
 
+                <div ref={loadMoreRef} className="h-10" />
+
+                {isFetchingMore && (
+                  <p className="py-4 text-center text-sm text-gray-500">
+                    Loading more products...
+                  </p>
+                )}
+              </>
+              )}
             </section>
           </div>
         </div>

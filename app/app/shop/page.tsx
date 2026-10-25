@@ -2,8 +2,8 @@
 
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Header from "../../components/Header/Header";
 
 /* =========================================================
@@ -37,6 +37,7 @@ type Product = {
   price: number;
   image?: string;
   category?: string;
+  categories?: string[];
   brand?: {
     id: string;
     name: string;
@@ -234,8 +235,9 @@ type SortOption =
    PAGE
 ========================================================= */
 
-export default function ShopPage() {
+function ShopContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   /* =======================================================
      SEARCH STATE
@@ -246,16 +248,16 @@ export default function ShopPage() {
   /* =======================================================
      READ SEARCH FROM URL
   ======================================================= */
+ useEffect(() => {
+  const search = searchParams.get("search") || "";
+  const category = searchParams.get("category") || "all";
 
-  useEffect(() => {
-    const params = new URLSearchParams(
-      window.location.search
-    );
-
-    const search = params.get("search") || "";
-
-    setSearchText(search);
-  }, []);
+  setSearchText(search);
+  setSelectedCategory(category);
+}, [
+  searchParams.get("search"),
+  searchParams.get("category"),
+]);
   /* =======================================================
      DATA
   ======================================================= */
@@ -271,7 +273,7 @@ export default function ShopPage() {
   } = useQuery<any>(PRODUCTS_QUERY, {
     variables: {
       page: 1,
-      limit: 8,
+    limit: 20,
     },
     fetchPolicy: "network-only",
   });
@@ -317,7 +319,7 @@ export default function ShopPage() {
         fetchMore({
           variables: {
             page: nextPage,
-            limit: 8,
+          limit: 20,
           },
           updateQuery: (previousResult, { fetchMoreResult }) => {
             if (!fetchMoreResult) return previousResult;
@@ -507,6 +509,15 @@ export default function ShopPage() {
   /* =======================================================
      PRODUCTS
   ======================================================= */
+console.log(
+  "SHOP PRODUCT DATA:",
+  productsData?.products?.products?.map((item: any) => ({
+    name: item.name,
+    categories: item.categories,
+    status: item.status,
+    items: item.items?.length,
+  }))
+);
 
 const products: Product[] = (
   productsData?.products?.products || []
@@ -546,7 +557,20 @@ const products: Product[] = (
 ),
 
     image,
-    category: item.categories?.[0] || "",
+category: Array.isArray(item.categories)
+  ? item.categories
+      .map((c: any) =>
+        typeof c === "string" ? c : c?.name || c?.slug || ""
+      )
+      .filter(Boolean)[0] || ""
+  : "",
+categories: Array.isArray(item.categories)
+  ? item.categories
+      .map((c: any) =>
+        typeof c === "string" ? c : c?.name || c?.slug || ""
+      )
+      .filter(Boolean)
+  : [],
     brand: item.brand,
     description: item.description || "",
     
@@ -742,15 +766,18 @@ if (normalizedSearch) {
     "kids",
   ];
 
-  if (
-    categoryNames.includes(normalizedSearch)
-  ) {
-    if (
-      productCategory !== normalizedSearch
-    ) {
-      return false;
-    }
-  } else {
+  if (categoryNames.includes(normalizedSearch)) {
+  const allCategories = [
+    product.category,
+    ...(product.categories || []),
+  ]
+    .filter((category): category is string => Boolean(category))
+    .map((category) => category.trim().toLowerCase());
+
+  if (!allCategories.includes(normalizedSearch)) {
+    return false;
+  }
+} else {
     /* -------------------------------------------
        NORMAL PRODUCT SEARCH
     ------------------------------------------- */
@@ -772,16 +799,16 @@ if (normalizedSearch) {
       /* =====================================================
          CATEGORY
       ===================================================== */
+if (selectedCategory !== "all") {
+  const productCategories = [
+    product.category,
+    ...(product.categories || []),
+  ].filter((c): c is string => Boolean(c)).map((c) => c.trim().toLowerCase());
 
-      if (selectedCategory !== "all") {
-        if (
-          product.category?.toLowerCase() !==
-          selectedCategory.toLowerCase()
-        ) {
-          return false;
-        }
-      }
-
+  if (!productCategories.includes(selectedCategory.trim().toLowerCase())) {
+    return false;
+  }
+}
       /* =====================================================
          SIZE
       ===================================================== */
@@ -2024,5 +2051,17 @@ if (normalizedSearch) {
         </div>
       </main>
     </>
+  );
+}
+
+
+
+
+
+export default function ShopPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading shop...</div>}>
+      <ShopContent />
+    </Suspense>
   );
 }

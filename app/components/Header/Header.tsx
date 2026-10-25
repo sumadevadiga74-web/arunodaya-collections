@@ -175,28 +175,26 @@ const handleLogout = () => {
                 CATEGORIES
             ================================================= */}
             <nav className="hidden items-center gap-7 md:flex">
+<Link
+  href="/shop?category=Women"
+  className="text-sm font-semibold text-white transition hover:text-[#f2c12e]"
+>
+  Women
+</Link>
 
-              <Link
-                href="/shop"
-                className="text-sm font-semibold text-white transition hover:text-[#f2c12e]"
-              >
-                Women
-              </Link>
+<Link
+  href="/shop?category=Men"
+  className="text-sm font-semibold text-white transition hover:text-[#f2c12e]"
+>
+  Men
+</Link>
 
-              <Link
-                href="/shop"
-                className="text-sm font-semibold text-white transition hover:text-[#f2c12e]"
-              >
-                Men
-              </Link>
-
-              <Link
-                href="/shop"
-                className="text-sm font-semibold text-white transition hover:text-[#f2c12e]"
-              >
-                Kids
-              </Link>
-
+<Link
+  href="/shop?category=Kids"
+  className="text-sm font-semibold text-white transition hover:text-[#f2c12e]"
+>
+  Kids
+</Link>
             </nav>
           </div>
 
@@ -318,21 +316,21 @@ const handleLogout = () => {
           <nav className="flex items-center justify-center gap-8 px-4 py-3">
 
             <Link
-              href="/shop"
+             href="/shop?category=Women"
               className="text-sm font-semibold text-white hover:text-[#f2c12e]"
             >
               Women
             </Link>
 
             <Link
-              href="/shop"
+           href="/shop?category=Men"
               className="text-sm font-semibold text-white hover:text-[#f2c12e]"
             >
               Men
             </Link>
 
             <Link
-              href="/shop"
+             href="/shop?category=Kids"
               className="text-sm font-semibold text-white hover:text-[#f2c12e]"
             >
               Kids

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -17,12 +18,30 @@ const WISHLIST_QUERY = gql`
       product {
         id
         name
-        price
-        image
-        category
         description
-        stock
+        categories
         status
+        mainMedia {
+          type
+          url
+        }
+        images {
+          type
+          url
+        }
+        items {
+          id
+          price
+          sellingPrice
+          mrp
+          stock
+          size
+          colour
+          images {
+            type
+            url
+          }
+        }
       }
     }
   }
@@ -36,15 +55,31 @@ const DELETE_WISHLIST_MUTATION = gql`
   }
 `;
 
+type ProductMedia = {
+  type?: string | null;
+  url?: string | null;
+};
+
+type ProductItem = {
+  id: string;
+  price?: number | null;
+  sellingPrice?: number | null;
+  mrp?: number | null;
+  stock?: number | null;
+  size?: string | null;
+  colour?: string | null;
+  images?: ProductMedia[] | null;
+};
+
 type Product = {
   id: string;
   name: string;
-  price: number;
-  image?: string | null;
-  category?: string | null;
   description?: string | null;
-  stock?: number | null;
   status?: string | null;
+  categories?: string[] | null;
+  mainMedia?: ProductMedia[] | null;
+  images?: ProductMedia[] | null;
+  items?: ProductItem[] | null;
 };
 
 type WishlistItem = {
@@ -91,9 +126,7 @@ export default function WishlistPage() {
     DELETE_WISHLIST_MUTATION
   );
 
-  /*
-    Remove old wishlist records whose product no longer exists.
-  */
+  // Remove wishlist records whose products no longer exist.
   useEffect(() => {
     const cleanupWishlist = async () => {
       if (!data?.wishlists || !authUser) {
@@ -112,17 +145,8 @@ export default function WishlistPage() {
         await Promise.all(
           invalidItems.map((item: WishlistItem) =>
             deleteWishlist({
-              variables: {
-                id: item.id,
-              },
+              variables: { id: item.id },
             })
-          )
-        );
-
-        console.log(
-          "Removed stale wishlist items:",
-          invalidItems.map(
-            (item: WishlistItem) => item.productId
           )
         );
 
@@ -138,9 +162,7 @@ export default function WishlistPage() {
     cleanupWishlist();
   }, [data, authUser, deleteWishlist, refetch]);
 
-  /*
-    Remove product from wishlist.
-  */
+  // Remove a product from the wishlist.
   const handleRemoveWishlist = async (
     wishlistId: string
   ) => {
@@ -148,9 +170,7 @@ export default function WishlistPage() {
       setRemovingWishlistId(wishlistId);
 
       await deleteWishlist({
-        variables: {
-          id: wishlistId,
-        },
+        variables: { id: wishlistId },
       });
 
       await refetch();
@@ -160,9 +180,7 @@ export default function WishlistPage() {
         removeError
       );
 
-      alert(
-        "Unable to remove this product from wishlist."
-      );
+      alert("Unable to remove this product from wishlist.");
     } finally {
       setRemovingWishlistId(null);
     }
@@ -172,7 +190,6 @@ export default function WishlistPage() {
     return (
       <>
         <Header />
-
         <main className="min-h-screen bg-[#f8f9fb]">
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-lg font-semibold text-[#0b1f3a]">
@@ -188,22 +205,18 @@ export default function WishlistPage() {
     return (
       <>
         <Header />
-
         <main className="min-h-screen bg-[#f8f9fb]">
           <div className="flex min-h-[70vh] items-center justify-center px-4">
             <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
               <div className="mb-4 text-5xl text-[#c9a227]">
                 ♡
               </div>
-
               <h1 className="text-2xl font-bold text-[#0b1f3a]">
                 Your Wishlist
               </h1>
-
               <p className="mt-3 text-gray-600">
                 Please login to view your wishlist.
               </p>
-
               <Link
                 href="/customer-login"
                 className="mt-6 inline-block rounded-lg bg-[#c9a227] px-6 py-3 font-semibold text-white transition hover:bg-[#b18d1f]"
@@ -221,7 +234,6 @@ export default function WishlistPage() {
     return (
       <>
         <Header />
-
         <main className="min-h-screen bg-[#f8f9fb]">
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-lg font-semibold text-[#0b1f3a]">
@@ -237,14 +249,12 @@ export default function WishlistPage() {
     return (
       <>
         <Header />
-
         <main className="min-h-screen bg-[#f8f9fb]">
           <div className="flex min-h-[60vh] items-center justify-center px-4">
             <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
               <h1 className="text-xl font-bold text-red-600">
                 Unable to Load Wishlist
               </h1>
-
               <p className="mt-3 text-gray-600">
                 {error.message}
               </p>
@@ -255,56 +265,41 @@ export default function WishlistPage() {
     );
   }
 
-  /*
-    Only show wishlist items whose product still exists.
-  */
   const wishlistItems: WishlistItem[] = (
     data?.wishlists || []
-  ).filter(
-    (item: WishlistItem) => item.product
-  );
+  ).filter((item: WishlistItem) => item.product);
 
   return (
     <>
       <Header />
 
       <main className="min-h-screen bg-[#f8f9fb]">
-
-        {/* HERO */}
         <section className="bg-[#0b1f3a] px-6 py-12 text-center">
           <div className="mx-auto max-w-7xl">
             <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#c9a227]">
               Arunodaya Collections
             </p>
-
             <h1 className="mt-3 text-4xl font-bold text-white">
               My Wishlist
             </h1>
-
             <p className="mt-3 text-gray-200">
               Your saved products
             </p>
           </div>
         </section>
 
-        {/* PRODUCTS */}
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-
           {wishlistItems.length === 0 ? (
             <div className="rounded-2xl bg-white px-6 py-16 text-center shadow-sm">
-
               <div className="text-6xl text-[#c9a227]">
                 ♡
               </div>
-
               <h2 className="mt-5 text-2xl font-bold text-[#0b1f3a]">
                 Your wishlist is empty
               </h2>
-
               <p className="mt-2 text-gray-600">
                 Save your favourite products here.
               </p>
-
               <Link
                 href="/shop"
                 className="mt-6 inline-block rounded-lg bg-[#c9a227] px-6 py-3 font-semibold text-white transition hover:bg-[#b18d1f]"
@@ -312,33 +307,61 @@ export default function WishlistPage() {
                 Continue Shopping
               </Link>
             </div>
-
           ) : (
-
             <>
-              {/* TITLE */}
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex items-center justify-between gap-3">
                 <h2 className="text-2xl font-bold text-[#0b1f3a]">
                   Saved Products
                 </h2>
-
                 <span className="rounded-full bg-[#0b1f3a] px-4 py-2 text-sm font-semibold text-white">
                   {wishlistItems.length} item
-                  {wishlistItems.length !== 1
-                    ? "s"
-                    : ""}
+                  {wishlistItems.length !== 1 ? "s" : ""}
                 </span>
               </div>
 
-              {/* PRODUCT GRID */}
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-
                 {wishlistItems.map((item) => {
                   const product = item.product;
 
                   if (!product) {
                     return null;
                   }
+
+                  const productItems = product.items ?? [];
+
+                  const pricedItem = productItems.find(
+                    (variant) =>
+                      Number(variant.sellingPrice ?? 0) > 0 ||
+                      Number(variant.price ?? 0) > 0 ||
+                      Number(variant.mrp ?? 0) > 0
+                  );
+
+                  const displayPrice =
+                    pricedItem?.sellingPrice ||
+                    pricedItem?.price ||
+                    pricedItem?.mrp ||
+                    0;
+
+                  const productImage =
+                    product.mainMedia?.find(
+                      (media) => media.url?.trim()
+                    )?.url ||
+                    product.images?.find(
+                      (media) => media.url?.trim()
+                    )?.url ||
+                    productItems
+                      .flatMap((variant) => variant.images ?? [])
+                      .find((media) => media.url?.trim())?.url;
+
+                  const displayCategory =
+                    product.categories?.[0];
+
+                  const availableStock = productItems.reduce(
+                    (total, variant) =>
+                      total +
+                      Math.max(0, Number(variant.stock ?? 0)),
+                    0
+                  );
 
                   const isRemoving =
                     removingWishlistId === item.id;
@@ -348,15 +371,22 @@ export default function WishlistPage() {
                       key={item.id}
                       className="overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                     >
-
-                      {/* PRODUCT IMAGE */}
+                      {/* Product image */}
                       <div className="relative flex h-64 items-center justify-center bg-[#f8f9fb]">
-
-                        {product.image ? (
+                        {productImage ? (
                           <img
-                            src={product.image}
+                            src={productImage}
                             alt={product.name}
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-contain"
+                            loading="lazy"
+                            onError={(event) => {
+                              console.error(
+                                "Wishlist image failed to load:",
+                                productImage
+                              );
+                              event.currentTarget.style.display =
+                                "none";
+                            }}
                           />
                         ) : (
                           <span className="text-6xl text-[#c9a227]">
@@ -364,7 +394,6 @@ export default function WishlistPage() {
                           </span>
                         )}
 
-                        {/* ❤️ WISHLIST BUTTON */}
                         <button
                           type="button"
                           onClick={() =>
@@ -385,39 +414,36 @@ export default function WishlistPage() {
                             </span>
                           )}
                         </button>
-
                       </div>
 
-                      {/* PRODUCT DETAILS */}
+                      {/* Product details */}
                       <div className="p-5">
-
-                        {product.category && (
+                        {displayCategory && (
                           <p className="text-xs font-semibold uppercase tracking-wider text-[#c9a227]">
-                            {product.category}
+                            {displayCategory}
                           </p>
                         )}
 
                         <h3 className="mt-2 text-lg font-bold text-[#0b1f3a]">
                           {product.name}
                         </h3>
-<p className="mt-2 text-xl font-bold text-[#0b1f3a]">
-  {String.fromCharCode(8377)}
-  {product.price.toFixed(2)}
-</p>
+
+                        <p className="mt-2 text-xl font-bold text-[#0b1f3a]">
+                          ₹{Number(displayPrice).toFixed(2)}
+                        </p>
 
                         {product.description && (
                           <p className="mt-2 line-clamp-2 text-sm text-gray-600">
                             {product.description}
                           </p>
                         )}
-{product.stock !== undefined &&
-  product.stock !== null &&
-  product.stock > 0 &&
-  product.stock <= 5 && (
-    <p className="mt-3 text-sm font-semibold text-red-600">
-      Only {product.stock} left
-    </p>
-  )}
+
+                        {availableStock > 0 &&
+                          availableStock <= 5 && (
+                            <p className="mt-3 text-sm font-semibold text-red-600">
+                              Only {availableStock} left
+                            </p>
+                          )}
 
                         <Link
                           href={`/shop/${product.id}`}
@@ -425,16 +451,13 @@ export default function WishlistPage() {
                         >
                           View Product
                         </Link>
-
                       </div>
                     </div>
                   );
                 })}
-
               </div>
             </>
           )}
-
         </section>
       </main>
     </>
